@@ -6,7 +6,8 @@
     "esModuleInterop": true,
     "strict": true,
     "resolveJsonModule": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "outDir": "./dist" // Specify the output directory
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "src"]
 }

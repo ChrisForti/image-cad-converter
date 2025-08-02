@@ -9,6 +9,7 @@ export default defineConfig({
     include: ["lucide-react"],
   },
   build: {
+    outDir: "dist", // Ensure this matches your TypeScript `outDir`
     rollupOptions: {
       output: {
         manualChunks: {
