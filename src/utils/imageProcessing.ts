@@ -14,16 +14,16 @@ export const extractLinesFromEdges = (
     for (let x = 0; x < width; x++) {
       const idx = (y * width + x) * 4;
       const key = `${x},${y}`;
-      
+
       // If this is an edge pixel and we haven't visited it
       if (data[idx] > 128 && !visited.has(key)) {
         const linePoints = traceLine(data, width, height, x, y, visited);
-        
+
         if (linePoints.length >= minLineLength) {
           features.push({
             type: "hull_profile", // Use existing type for general lines
             points: linePoints,
-            confidence: 0.8
+            confidence: 0.8,
           });
         }
       }
@@ -60,12 +60,18 @@ function traceLine(
       for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
           if (dx === 0 && dy === 0) continue;
-          
+
           const nx = x + dx;
           const ny = y + dy;
           const nkey = `${nx},${ny}`;
 
-          if (nx >= 0 && nx < width && ny >= 0 && ny < height && !visited.has(nkey)) {
+          if (
+            nx >= 0 &&
+            nx < width &&
+            ny >= 0 &&
+            ny < height &&
+            !visited.has(nkey)
+          ) {
             const nidx = (ny * width + nx) * 4;
             if (data[nidx] > 128) {
               stack.push({ x: nx, y: ny });
