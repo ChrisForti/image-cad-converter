@@ -5,70 +5,40 @@ import {
   ReferencePoint,
 } from "../types/index.js";
 
+// Simple DXF generator for line drawings
 export const generateDXF = (
   features: YachtFeature[],
-  scale: number
+  scale: number = 1
 ): string => {
-  let dxf = `0
-SECTION
-2
-ENTITIES
-`;
+  const lines: string[] = [];
+  
+  // DXF header
+  lines.push("0", "SECTION", "2", "ENTITIES");
 
-  features.forEach((feature, index) => {
-    if (feature.type === "hull_profile" || feature.type === "deck_edge") {
-      dxf += `0
-POLYLINE
-8
-${feature.type.toUpperCase()}
-62
-${index + 1}
-70
-0
-`;
-      feature.points.forEach((point) => {
-        const worldX = point.x / scale;
-        const worldY = point.y / scale;
-        dxf += `0
-VERTEX
-8
-${feature.type.toUpperCase()}
-10
-${worldX.toFixed(3)}
-20
-${worldY.toFixed(3)}
-`;
-      });
-      dxf += `0
-SEQEND
-`;
-    } else if (feature.points.length >= 2) {
-      const p1 = feature.points[0];
-      const p2 = feature.points[feature.points.length - 1];
-      dxf += `0
-LINE
-8
-${feature.type.toUpperCase()}
-62
-${index + 1}
-10
-${(p1.x / scale).toFixed(3)}
-20
-${(p1.y / scale).toFixed(3)}
-11
-${(p2.x / scale).toFixed(3)}
-21
-${(p2.y / scale).toFixed(3)}
-`;
+  // Convert features to simple lines
+  features.forEach((feature) => {
+    if (feature.points.length >= 2) {
+      for (let i = 0; i < feature.points.length - 1; i++) {
+        const p1 = feature.points[i];
+        const p2 = feature.points[i + 1];
+        
+        // Create a line entity
+        lines.push(
+          "0", "LINE",
+          "8", feature.type.toUpperCase(),
+          "10", (p1.x / scale).toFixed(3),
+          "20", (p1.y / scale).toFixed(3),
+          "11", (p2.x / scale).toFixed(3),
+          "21", (p2.y / scale).toFixed(3)
+        );
+      }
     }
   });
 
-  dxf += `0
-ENDSEC
-0
-EOF`;
-
-  return dxf;
+  // DXF footer
+  lines.push("0", "ENDSEC", "0", "EOF");
+  
+  return lines.join("\n");
 };
 
 export const generateSVG = (
@@ -77,37 +47,25 @@ export const generateSVG = (
   canvasWidth: number,
   canvasHeight: number
 ): string => {
-  let svg = `<svg width="${canvasWidth}" height="${canvasHeight}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <style>
-      .hull_profile { stroke: #2c5aa0; stroke-width: 2; fill: none; }
-      .waterline { stroke: #4a90e2; stroke-width: 3; }
-      .mast { stroke: #8b4513; stroke-width: 4; }
-      .deck_edge { stroke: #d2b48c; stroke-width: 2; fill: none; }
-      .cabin { stroke: #8fbc8f; stroke-width: 2; fill: none; }
-      .keel { stroke: #2f4f4f; stroke-width: 3; }
-    </style>
-  </defs>
-`;
+  const lines: string[] = [];
+  
+  lines.push(`<svg width="${canvasWidth}" height="${canvasHeight}" xmlns="http://www.w3.org/2000/svg">`);
+  lines.push('<g stroke="black" stroke-width="1" fill="none">');
 
   features.forEach((feature) => {
-    if (feature.type === "hull_profile" || feature.type === "deck_edge") {
-      if (feature.points.length > 0) {
-        let path = `M ${feature.points[0].x} ${feature.points[0].y}`;
-        for (let i = 1; i < feature.points.length; i++) {
-          path += ` L ${feature.points[i].x} ${feature.points[i].y}`;
-        }
-        svg += `  <path d="${path}" class="${feature.type}" />\n`;
+    if (feature.points.length >= 2) {
+      for (let i = 0; i < feature.points.length - 1; i++) {
+        const p1 = feature.points[i];
+        const p2 = feature.points[i + 1];
+        lines.push(`<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" />`);
       }
-    } else if (feature.points.length >= 2) {
-      const p1 = feature.points[0];
-      const p2 = feature.points[feature.points.length - 1];
-      svg += `  <line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" class="${feature.type}" />\n`;
     }
   });
 
-  svg += "</svg>";
-  return svg;
+  lines.push('</g>');
+  lines.push('</svg>');
+  
+  return lines.join('\n');
 };
 
 export const generateJSON = (
@@ -120,9 +78,9 @@ export const generateJSON = (
 ): string => {
   const output: CADOutput = {
     metadata: {
-      generator: "Yacht Photo to CAD Converter v2.0",
+      generator: "Image to CAD Converter",
       scale: scale,
-      units: "meters",
+      units: "pixels",
       timestamp: new Date().toISOString(),
       imageInfo: {
         width: canvasWidth,
@@ -176,6 +134,6 @@ export const generateCADOutput = (
         originalImage
       );
     default:
-      return "";
+      return "SCALE CALIBRATION";
   }
 };
