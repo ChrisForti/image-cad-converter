@@ -30,6 +30,7 @@ export function ImageToCAD() {
     threshold: 100,
     scale: 100,
     outputFormat: "dxf",
+    conversionMode: "interior", // Default to interior components
   });
 
   // Refs with proper typing
@@ -37,9 +38,12 @@ export function ImageToCAD() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const originalImageDataRef = useRef<ImageData | null>(null);
 
-  // Initialize CAD output
+  // Initialize CAD output based on conversion mode
   useEffect(() => {
-    setCadOutput(`; Yacht CAD Drawing Output
+    const getInitialMessage = () => {
+      switch (settings.conversionMode) {
+        case "yacht":
+          return `; Yacht CAD Drawing Output
 ; Generated from photo analysis
 ; 
 ; Upload a yacht photo to begin conversion process...
@@ -49,8 +53,38 @@ export function ImageToCAD() {
 ; - Deck outlines  
 ; - Mast and rigging points
 ; - Cabin structures
-; - Reference dimensions`);
-  }, []);
+; - Overall dimensions`;
+        case "interior":
+          return `; Interior Component CAD Output
+; Generated from photo analysis
+; 
+; Upload a photo of yacht interior components...
+; 
+; Components that will be detected:
+; - Cabinet doors and drawers
+; - Seating and furniture
+; - Countertops and surfaces
+; - Small fittings and hardware
+; - Detailed dimensions in cm`;
+        case "general":
+          return `; General Object CAD Output
+; Generated from photo analysis
+; 
+; Upload a photo of any object to convert...
+; 
+; Objects will be analyzed for:
+; - Basic geometric shapes
+; - Overall dimensions
+; - Edge outlines
+; - General proportions`;
+        default:
+          return `; CAD Drawing Output
+; Generated from photo analysis
+; Upload a photo to begin...`;
+      }
+    };
+    setCadOutput(getInitialMessage());
+  }, [settings.conversionMode]);
 
   // File upload handler with proper error handling
   const handleFileUpload = useCallback((file: File | null) => {
@@ -281,6 +315,7 @@ export function ImageToCAD() {
         referencePoints,
         canvas.width,
         canvas.height,
+        settings.conversionMode,
         image
       );
       setCadOutput(output);
@@ -407,6 +442,27 @@ export function ImageToCAD() {
             <div className="grid grid-cols-2 gap-4 mt-6">
               <div>
                 <label className="block text-sm font-medium text-blue-200 mb-2">
+                  Conversion Mode
+                </label>
+                <select
+                  className="w-full p-3 bg-white/90 text-gray-800 rounded-lg"
+                  value={settings.conversionMode}
+                  onChange={(e) =>
+                    setSettings((prev) => ({
+                      ...prev,
+                      conversionMode: e.target
+                        .value as ProcessingSettings["conversionMode"],
+                    }))
+                  }
+                >
+                  <option value="interior">Interior Components</option>
+                  <option value="yacht">Full Yacht</option>
+                  <option value="general">General Objects</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-blue-200 mb-2">
                   Edge Detection
                 </label>
                 <select
@@ -425,7 +481,9 @@ export function ImageToCAD() {
                   <option value="laplacian">Laplacian</option>
                 </select>
               </div>
+            </div>
 
+            <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-blue-200 mb-2">
                   Threshold: {settings.threshold}

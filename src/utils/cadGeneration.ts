@@ -8,7 +8,13 @@ import {
 // Estimate component dimensions based on typical furniture/interior proportions
 export const estimateComponentDimensions = (
   features: YachtFeature[]
-): { width: number; height: number; depth: number; type: string; confidence: number } => {
+): {
+  width: number;
+  height: number;
+  depth: number;
+  type: string;
+  confidence: number;
+} => {
   if (features.length === 0) {
     return { width: 0, height: 0, depth: 0, type: "unknown", confidence: 0 };
   }
@@ -97,7 +103,119 @@ export const estimateComponentDimensions = (
     height: estimatedHeight,
     depth: estimatedDepth,
     type: componentType,
-    confidence
+    confidence,
+  };
+};
+
+// Estimate yacht dimensions based on typical proportions
+export const estimateYachtDimensions = (
+  features: YachtFeature[]
+): {
+  width: number;
+  height: number;
+  depth: number;
+  type: string;
+  confidence: number;
+} => {
+  if (features.length === 0) {
+    return { width: 0, height: 0, depth: 0, type: "unknown", confidence: 0 };
+  }
+
+  // Find the feature with the largest span (likely the hull)
+  let maxSpan = 0;
+  let hullFeature = features[0];
+
+  features.forEach((feature) => {
+    if (feature.points.length >= 2) {
+      const xs = feature.points.map((p) => p.x);
+      const ys = feature.points.map((p) => p.y);
+      const width = Math.max(...xs) - Math.min(...xs);
+      const height = Math.max(...ys) - Math.min(...ys);
+      const span = Math.max(width, height);
+
+      if (span > maxSpan) {
+        maxSpan = span;
+        hullFeature = feature;
+      }
+    }
+  });
+
+  // Estimate based on pixel dimensions and typical yacht proportions
+  let estimatedLength: number;
+  let estimatedBeam: number;
+  if (maxSpan < 300) {
+    estimatedLength = 8; // Small yacht estimate
+    estimatedBeam = 2.3; // 8m / 3.5
+  } else if (maxSpan < 600) {
+    estimatedLength = 15; // Medium yacht
+    estimatedBeam = 3.75; // 15m / 4
+  } else {
+    estimatedLength = 25; // Large yacht
+    estimatedBeam = 5.5; // 25m / 4.5
+  }
+
+  const confidence = hullFeature.confidence || 0.6;
+
+  return {
+    width: estimatedLength,
+    height: estimatedBeam,
+    depth: estimatedLength / 8, // Draft estimate
+    type: "yacht",
+    confidence,
+  };
+};
+
+// General object estimation
+export const estimateGeneralDimensions = (
+  features: YachtFeature[]
+): {
+  width: number;
+  height: number;
+  depth: number;
+  type: string;
+  confidence: number;
+} => {
+  if (features.length === 0) {
+    return { width: 0, height: 0, depth: 0, type: "unknown", confidence: 0 };
+  }
+
+  // Find largest feature
+  let maxSpan = 0;
+  let primaryFeature = features[0];
+
+  features.forEach((feature) => {
+    if (feature.points.length >= 2) {
+      const xs = feature.points.map((p) => p.x);
+      const ys = feature.points.map((p) => p.y);
+      const width = Math.max(...xs) - Math.min(...xs);
+      const height = Math.max(...ys) - Math.min(...ys);
+      const span = Math.max(width, height);
+
+      if (span > maxSpan) {
+        maxSpan = span;
+        primaryFeature = feature;
+      }
+    }
+  });
+
+  // General size estimation based on pixels
+  let estimatedSize: number;
+  if (maxSpan < 200) {
+    estimatedSize = 0.3; // 30cm - small object
+  } else if (maxSpan < 400) {
+    estimatedSize = 1.0; // 1m - medium object
+  } else {
+    estimatedSize = 3.0; // 3m - large object
+  }
+
+  const confidence = primaryFeature.confidence || 0.5;
+
+  return {
+    width: estimatedSize,
+    height: estimatedSize * 0.7,
+    depth: estimatedSize * 0.3,
+    type: "general_object",
+    confidence,
   };
 };
 
@@ -178,7 +296,13 @@ export const generateSVG = (
 export const generateDXFWithDimensions = (
   features: YachtFeature[],
   scale: number,
-  estimates: { width: number; height: number; depth: number; type: string; confidence: number }
+  estimates: {
+    width: number;
+    height: number;
+    depth: number;
+    type: string;
+    confidence: number;
+  }
 ): string => {
   const lines: string[] = [];
 
@@ -224,7 +348,11 @@ export const generateDXFWithDimensions = (
     "40",
     "2.0",
     "1",
-    `${estimates.type.toUpperCase()}: W${(estimates.width * 100).toFixed(0)}cm x H${(estimates.height * 100).toFixed(0)}cm x D${(estimates.depth * 100).toFixed(0)}cm`,
+    `${estimates.type.toUpperCase()}: W${(estimates.width * 100).toFixed(
+      0
+    )}cm x H${(estimates.height * 100).toFixed(0)}cm x D${(
+      estimates.depth * 100
+    ).toFixed(0)}cm`,
     "0",
     "TEXT",
     "8",
@@ -251,7 +379,13 @@ export const generateSVGWithDimensions = (
   scale: number,
   canvasWidth: number,
   canvasHeight: number,
-  estimates: { width: number; height: number; depth: number; type: string; confidence: number }
+  estimates: {
+    width: number;
+    height: number;
+    depth: number;
+    type: string;
+    confidence: number;
+  }
 ): string => {
   const lines: string[] = [];
 
@@ -286,13 +420,17 @@ export const generateSVGWithDimensions = (
     `<text x="10" y="45">WIDTH: ${(estimates.width * 100).toFixed(0)}cm</text>`
   );
   lines.push(
-    `<text x="10" y="65">HEIGHT: ${(estimates.height * 100).toFixed(0)}cm</text>`
+    `<text x="10" y="65">HEIGHT: ${(estimates.height * 100).toFixed(
+      0
+    )}cm</text>`
   );
   lines.push(
     `<text x="10" y="85">DEPTH: ${(estimates.depth * 100).toFixed(0)}cm</text>`
   );
   lines.push(
-    `<text x="10" y="105">CONFIDENCE: ${(estimates.confidence * 100).toFixed(0)}%</text>`
+    `<text x="10" y="105">CONFIDENCE: ${(estimates.confidence * 100).toFixed(
+      0
+    )}%</text>`
   );
   lines.push("</g>");
 
@@ -350,10 +488,30 @@ export const generateCADOutput = (
   referencePoints: ReferencePoint[],
   canvasWidth: number,
   canvasHeight: number,
+  conversionMode: ProcessingSettings["conversionMode"] = "interior",
   originalImage?: HTMLImageElement
 ): string => {
-  // Get dimension estimates
-  const estimates = estimateComponentDimensions(features);
+  // Get dimension estimates based on conversion mode
+  let estimates: {
+    width: number;
+    height: number;
+    depth: number;
+    type: string;
+    confidence: number;
+  };
+
+  switch (conversionMode) {
+    case "yacht":
+      estimates = estimateYachtDimensions(features);
+      break;
+    case "general":
+      estimates = estimateGeneralDimensions(features);
+      break;
+    case "interior":
+    default:
+      estimates = estimateComponentDimensions(features);
+      break;
+  }
 
   switch (format) {
     case "dxf":
@@ -376,7 +534,39 @@ export const generateCADOutput = (
         originalImage
       );
     default:
-      return `SCALE CALIBRATION
+      const getScaleMessage = () => {
+        switch (conversionMode) {
+          case "yacht":
+            return `SCALE CALIBRATION
+
+YACHT ANALYSIS:
+Type: ${estimates.type.toUpperCase()}
+Length: ${estimates.width.toFixed(1)}m
+Beam: ${estimates.height.toFixed(1)}m
+Draft: ${estimates.depth.toFixed(1)}m
+Confidence: ${(estimates.confidence * 100).toFixed(0)}%
+
+NOTES:
+- Estimates based on typical yacht proportions
+- Suitable for full yacht documentation
+- Scale: 1:${scale}`;
+          case "general":
+            return `SCALE CALIBRATION
+
+OBJECT ANALYSIS:
+Type: ${estimates.type.toUpperCase()}
+Width: ${estimates.width.toFixed(1)}m
+Height: ${estimates.height.toFixed(1)}m
+Depth: ${estimates.depth.toFixed(1)}m
+Confidence: ${(estimates.confidence * 100).toFixed(0)}%
+
+NOTES:
+- General object size estimation
+- Basic dimensional analysis
+- Scale: 1:${scale}`;
+          case "interior":
+          default:
+            return `SCALE CALIBRATION
 
 COMPONENT ANALYSIS:
 Type: ${estimates.type.toUpperCase()}
@@ -389,5 +579,8 @@ NOTES:
 - Estimates based on typical furniture/interior proportions
 - Suitable for yacht interior components
 - Scale: 1:${scale}`;
+        }
+      };
+      return getScaleMessage();
   }
 };
