@@ -19,6 +19,7 @@ export interface ProcessingSettings {
   threshold: number;
   scale: number;
   outputFormat: "dxf" | "svg" | "json";
+  conversionMode: "yacht" | "interior" | "general";
 }
 
 export interface CADMetadata {

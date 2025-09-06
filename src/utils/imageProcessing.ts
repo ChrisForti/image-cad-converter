@@ -1,4 +1,89 @@
-import { ProcessingSettings } from "../types/index.js";
+import { ProcessingSettings, YachtFeature } from "../types/index.js";
+
+// Simple line extraction from edge detection
+export const extractLinesFromEdges = (
+  imageData: ImageData,
+  minLineLength: number = 10
+): YachtFeature[] => {
+  const { data, width, height } = imageData;
+  const features: YachtFeature[] = [];
+  const visited = new Set<string>();
+
+  // Find edge pixels and trace lines
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (y * width + x) * 4;
+      const key = `${x},${y}`;
+
+      // If this is an edge pixel and we haven't visited it
+      if (data[idx] > 128 && !visited.has(key)) {
+        const linePoints = traceLine(data, width, height, x, y, visited);
+
+        if (linePoints.length >= minLineLength) {
+          features.push({
+            type: "hull_profile", // Use existing type for general lines
+            points: linePoints,
+            confidence: 0.8,
+          });
+        }
+      }
+    }
+  }
+
+  return features;
+};
+
+// Simple line tracing algorithm
+function traceLine(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  startX: number,
+  startY: number,
+  visited: Set<string>
+): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = [];
+  const stack = [{ x: startX, y: startY }];
+
+  while (stack.length > 0) {
+    const { x, y } = stack.pop()!;
+    const key = `${x},${y}`;
+
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    const idx = (y * width + x) * 4;
+    if (data[idx] > 128) {
+      points.push({ x, y });
+
+      // Check 8-connected neighbors
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          if (dx === 0 && dy === 0) continue;
+
+          const nx = x + dx;
+          const ny = y + dy;
+          const nkey = `${nx},${ny}`;
+
+          if (
+            nx >= 0 &&
+            nx < width &&
+            ny >= 0 &&
+            ny < height &&
+            !visited.has(nkey)
+          ) {
+            const nidx = (ny * width + nx) * 4;
+            if (data[nidx] > 128) {
+              stack.push({ x: nx, y: ny });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return points;
+}
 
 export const applySobelEdgeDetection = (
   data: Uint8ClampedArray,
@@ -101,4 +186,16 @@ export const applyEdgeDetection = (
     default:
       return imageData;
   }
+};
+
+export const generateCADOutput = (settings: ProcessingSettings): string => {
+  return `; SCALE CALIBRATION
+; Scale: 1:${settings.scale}
+; Drawing generated from image processing
+; 
+; CAD Format: ${settings.outputFormat.toUpperCase()}
+; Edge Detection Method: ${settings.edgeMethod}
+; Threshold: ${settings.threshold}
+
+SCALE CALIBRATION`;
 };
