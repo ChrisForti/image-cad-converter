@@ -1,1 +1,1 @@
-{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/assets/imagetocad.tsx","./src/types/index.ts","./src/utils/cadgeneration.ts","./src/utils/imageprocessing.ts"],"errors":true,"version":"5.8.3"}
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/imagetocad.tsx","./src/types/index.ts","./src/utils/cadgeneration.ts","./src/utils/imageprocessing.ts"],"version":"5.8.3"}

@@ -263,7 +263,7 @@ export const generateDXF = (
 
 export const generateSVG = (
   features: YachtFeature[],
-  scale: number,
+  _scale: number, // marked as unused with underscore
   canvasWidth: number,
   canvasHeight: number
 ): string => {
@@ -376,7 +376,7 @@ export const generateDXFWithDimensions = (
 // SVG with dimension annotations
 export const generateSVGWithDimensions = (
   features: YachtFeature[],
-  scale: number,
+  _scale: number, // marked as unused with underscore
   canvasWidth: number,
   canvasHeight: number,
   estimates: {

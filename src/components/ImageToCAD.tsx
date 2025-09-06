@@ -20,7 +20,6 @@ import { generateCADOutput } from "../utils/cadGeneration.js";
 export function ImageToCAD() {
   // State with proper typing
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [processedImage, setProcessedImage] = useState<ImageData | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [referencePoints, setReferencePoints] = useState<ReferencePoint[]>([]);
   const [detectedFeatures, setDetectedFeatures] = useState<YachtFeature[]>([]);
@@ -301,7 +300,6 @@ export function ImageToCAD() {
         settings.threshold
       );
       ctx.putImageData(processedData, 0, 0);
-      setProcessedImage(processedData);
 
       // Generate yacht features
       const features = generateYachtFeatures();
@@ -378,7 +376,6 @@ export function ImageToCAD() {
 
   const clearAll = (): void => {
     setImage(null);
-    setProcessedImage(null);
     setReferencePoints([]);
     setDetectedFeatures([]);
     setCadOutput(`; Yacht CAD Drawing Output
