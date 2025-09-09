@@ -394,20 +394,22 @@ export function ImageToCAD() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 text-white">
-      <div className="max-w-7xl mx-auto p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 dark:from-gray-900 dark:via-gray-800 dark:to-black text-white transition-colors duration-300">
+      <div className="w-full mx-auto p-4 lg:p-6">
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-4">⛵ Image to CAD Converter</h1>
-          <p className="text-xl opacity-90">
+        <div className="text-center mb-6 lg:mb-8">
+          <h1 className="text-3xl lg:text-4xl font-bold mb-4">
+            ⛵ Image to CAD Converter
+          </h1>
+          <p className="text-lg lg:text-xl opacity-90">
             Transform images into precise CAD drawings for marine engineering
           </p>
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6 mb-6 lg:mb-8">
           {/* Input Panel */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+          <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 transition-colors duration-300">
             <h2 className="text-2xl font-semibold mb-6 text-blue-200 flex items-center gap-2">
               <Upload className="w-6 h-6" />
               Image Input
@@ -575,7 +577,7 @@ export function ImageToCAD() {
           </div>
 
           {/* Image Preview Panel */}
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+          <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 transition-colors duration-300">
             <h2 className="text-2xl font-semibold mb-6 text-blue-200">
               🖼️ Image Preview
             </h2>
@@ -622,7 +624,7 @@ export function ImageToCAD() {
         </div>
 
         {/* CAD Output Panel */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20 mb-8">
+        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 mb-8 transition-colors duration-300">
           <h2 className="text-2xl font-semibold mb-6 text-blue-200 flex items-center gap-2">
             <Settings className="w-6 h-6" />
             CAD Output
@@ -652,13 +654,13 @@ export function ImageToCAD() {
         </div>
 
         {/* Features Panel */}
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-6 border border-white/20">
+        <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 transition-colors duration-300">
           <h2 className="text-2xl font-semibold mb-6 text-blue-200">
             🛠️ Yacht-Specific Features
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <div className="bg-white/5 dark:bg-white/[0.02] p-4 rounded-lg border border-white/10 dark:border-gray-700 transition-colors duration-300">
               <h3 className="text-lg font-semibold text-blue-200 mb-2">
                 Hull Detection
               </h3>
@@ -667,7 +669,7 @@ export function ImageToCAD() {
               </p>
             </div>
 
-            <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <div className="bg-white/5 dark:bg-white/[0.02] p-4 rounded-lg border border-white/10 dark:border-gray-700 transition-colors duration-300">
               <h3 className="text-lg font-semibold text-blue-200 mb-2">
                 Rigging Analysis
               </h3>
@@ -676,7 +678,7 @@ export function ImageToCAD() {
               </p>
             </div>
 
-            <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <div className="bg-white/5 dark:bg-white/[0.02] p-4 rounded-lg border border-white/10 dark:border-gray-700 transition-colors duration-300">
               <h3 className="text-lg font-semibold text-blue-200 mb-2">
                 Deck Layout
               </h3>
@@ -685,7 +687,7 @@ export function ImageToCAD() {
               </p>
             </div>
 
-            <div className="bg-white/5 p-4 rounded-lg border border-white/10">
+            <div className="bg-white/5 dark:bg-white/[0.02] p-4 rounded-lg border border-white/10 dark:border-gray-700 transition-colors duration-300">
               <h3 className="text-lg font-semibold text-blue-200 mb-2">
                 Scale Calibration
               </h3>
