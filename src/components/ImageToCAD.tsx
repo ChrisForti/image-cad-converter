@@ -399,7 +399,7 @@ export function ImageToCAD() {
         {/* Header */}
         <div className="text-center mb-6 lg:mb-8">
           <h1 className="text-3xl lg:text-4xl font-bold mb-4">
-            ⛵ Image to CAD Converter
+            Image to CAD Converter
           </h1>
           <p className="text-lg lg:text-xl opacity-90">
             Transform images into precise CAD drawings for marine engineering
