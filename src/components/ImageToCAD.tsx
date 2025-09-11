@@ -16,14 +16,22 @@ import {
 } from "../types/index.js";
 import { applyEdgeDetection } from "../utils/imageProcessing.js";
 import { generateCADOutput } from "../utils/cadGeneration.js";
+import { useImageUpload } from "../hooks/useImageUpload.js";
+import { useCADOutput } from "../hooks/useCADOutput.js";
 
 export function ImageToCAD() {
+  // Custom hooks for business logic
+  const { cadOutput, setCadOutput, downloadCAD, copyToClipboard } = useCADOutput();
+  const { handleFileUpload, isUploading } = useImageUpload((img: HTMLImageElement) => {
+    setImage(img);
+    drawImageToCanvas(img);
+  });
+  
   // State with proper typing
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [referencePoints, setReferencePoints] = useState<ReferencePoint[]>([]);
   const [detectedFeatures, setDetectedFeatures] = useState<YachtFeature[]>([]);
-  const [cadOutput, setCadOutput] = useState<string>("");
   const [settings, setSettings] = useState<ProcessingSettings>({
     edgeMethod: "canny",
     threshold: 100,
@@ -86,41 +94,6 @@ export function ImageToCAD() {
   }, [settings.conversionMode]);
 
   // File upload handler with proper error handling
-  const handleFileUpload = useCallback((file: File | null) => {
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith("image/")) {
-      alert("Please select a valid image file");
-      return;
-    }
-
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      alert("File size too large. Please select an image under 10MB");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      if (!e.target?.result) return;
-
-      const img = new Image();
-      img.onload = () => {
-        setImage(img);
-        drawImageToCanvas(img);
-      };
-      img.onerror = () => {
-        alert("Failed to load image. Please try another file.");
-      };
-      img.src = e.target.result as string;
-    };
-    reader.onerror = () => {
-      alert("Failed to read file. Please try again.");
-    };
-    reader.readAsDataURL(file);
-  }, []);
-
   // Canvas drawing with proper error handling
   const drawImageToCanvas = useCallback((img: HTMLImageElement): void => {
     const canvas = canvasRef.current;
@@ -341,39 +314,6 @@ export function ImageToCAD() {
     }
   };
 
-  const downloadCAD = (): void => {
-    try {
-      const content = cadOutput;
-      const format = settings.outputFormat;
-      const filename = `yacht_drawing.${format}`;
-
-      const blob = new Blob([content], { type: "text/plain" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error("Download error:", error);
-      alert("Failed to download file. Please try again.");
-    }
-  };
-
-  const copyToClipboard = async (): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(cadOutput);
-      alert("CAD data copied to clipboard!");
-    } catch (err) {
-      console.error("Failed to copy: ", err);
-      alert(
-        "Failed to copy to clipboard. Please try selecting and copying manually."
-      );
-    }
-  };
-
   const clearAll = (): void => {
     setImage(null);
     setReferencePoints([]);
@@ -423,7 +363,9 @@ export function ImageToCAD() {
               onClick={() => fileInputRef.current?.click()}
             >
               <div className="text-4xl mb-4">🖼️</div>
-              <p className="text-lg mb-2">Click or drag yacht photos here</p>
+              <p className="text-lg mb-2">
+                {isUploading ? "Processing image..." : "Click or drag yacht photos here"}
+              </p>
               <small className="opacity-70">
                 Supports JPG, PNG, WebP formats
               </small>
@@ -636,7 +578,7 @@ export function ImageToCAD() {
 
           <div className="flex gap-3">
             <button
-              onClick={downloadCAD}
+              onClick={() => downloadCAD(settings)}
               className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
             >
               <Download className="w-4 h-4" />
@@ -644,7 +586,7 @@ export function ImageToCAD() {
             </button>
 
             <button
-              onClick={copyToClipboard}
+              onClick={() => copyToClipboard()}
               className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
             >
               <Copy className="w-4 h-4" />
