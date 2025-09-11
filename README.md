@@ -1,6 +1,6 @@
 # Image to CAD Converter
 
-A tool for converting 2D images into 3D CAD models using computer vision and machine learning techniques.
+A tool for converting digital images into 2D CAD models using computer vision and machine learning techniques.
 
 ## Overview
 
