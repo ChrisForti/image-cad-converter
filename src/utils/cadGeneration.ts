@@ -533,7 +533,7 @@ export const generateCADOutput = (
         canvasHeight,
         originalImage
       );
-    default:
+    default: {
       const getScaleMessage = () => {
         switch (conversionMode) {
           case "yacht":
@@ -582,5 +582,6 @@ NOTES:
         }
       };
       return getScaleMessage();
+    }
   }
 };

@@ -11,7 +11,7 @@ export interface YachtFeature {
   type: "hull_profile" | "waterline" | "mast" | "deck_edge" | "cabin" | "keel";
   points: Point[];
   confidence: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ProcessingSettings {
