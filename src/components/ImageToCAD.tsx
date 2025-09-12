@@ -14,19 +14,25 @@ import {
   YachtFeature,
   ProcessingSettings,
 } from "../types/index.js";
-import { applyEdgeDetection } from "../utils/imageProcessing.js";
+import {
+  applyEdgeDetection,
+  extractLinesFromEdges,
+} from "../utils/imageProcessing.js";
 import { generateCADOutput } from "../utils/cadGeneration.js";
 import { useImageUpload } from "../hooks/useImageUpload.js";
 import { useCADOutput } from "../hooks/useCADOutput.js";
 
 export function ImageToCAD() {
   // Custom hooks for business logic
-  const { cadOutput, setCadOutput, downloadCAD, copyToClipboard } = useCADOutput();
-  const { handleFileUpload, isUploading } = useImageUpload((img: HTMLImageElement) => {
-    setImage(img);
-    drawImageToCanvas(img);
-  });
-  
+  const { cadOutput, setCadOutput, downloadCAD, copyToClipboard } =
+    useCADOutput();
+  const { handleFileUpload, isUploading } = useImageUpload(
+    (img: HTMLImageElement) => {
+      setImage(img);
+      drawImageToCanvas(img);
+    }
+  );
+
   // State with proper typing
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -180,6 +186,137 @@ export function ImageToCAD() {
   }, [referencePoints, drawReferencePoints]);
 
   // Generate yacht-specific features
+  // Categorize detected features based on their position, orientation, and characteristics
+  const categorizeDetectedFeatures = useCallback(
+    (
+      rawFeatures: YachtFeature[],
+      canvasWidth: number,
+      canvasHeight: number,
+      conversionMode: ProcessingSettings["conversionMode"]
+    ): YachtFeature[] => {
+      return rawFeatures.map((feature, index) => {
+        const points = feature.points;
+        if (points.length < 2) return feature;
+
+        // Calculate feature characteristics
+        const firstPoint = points[0];
+        const lastPoint = points[points.length - 1];
+        const length = Math.sqrt(
+          Math.pow(lastPoint.x - firstPoint.x, 2) +
+            Math.pow(lastPoint.y - firstPoint.y, 2)
+        );
+
+        // Calculate if line is more horizontal or vertical
+        const deltaX = Math.abs(lastPoint.x - firstPoint.x);
+        const deltaY = Math.abs(lastPoint.y - firstPoint.y);
+        const isHorizontal = deltaX > deltaY;
+        const isVertical = deltaY > deltaX;
+
+        // Calculate average position
+        const avgX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+        const avgY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+
+        console.log(
+          `Feature analysis: length=${length.toFixed(
+            1
+          )}, isHorizontal=${isHorizontal}, isVertical=${isVertical}, avgX=${avgX.toFixed(
+            1
+          )}, avgY=${avgY.toFixed(
+            1
+          )}, canvasW=${canvasWidth}, canvasH=${canvasHeight}, mode=${conversionMode}`
+        );
+
+        // Categorize based on conversion mode and characteristics
+        let featureType: YachtFeature["type"] = "hull_profile";
+        let confidence = 0.7;
+
+        // Add some variety by using index for testing
+        const featureTypes: YachtFeature["type"][] = [
+          "hull_profile",
+          "waterline",
+          "mast",
+          "deck_edge",
+          "cabin",
+          "keel",
+        ];
+
+        if (conversionMode === "yacht") {
+          // Yacht-specific categorization with more flexible thresholds
+          if (isHorizontal && length > canvasWidth * 0.3) {
+            if (avgY > canvasHeight * 0.7) {
+              featureType = "waterline";
+              confidence = 0.9;
+            } else if (avgY < canvasHeight * 0.3) {
+              featureType = "deck_edge";
+              confidence = 0.8;
+            } else {
+              featureType = "hull_profile";
+              confidence = 0.85;
+            }
+          } else if (isVertical && length > canvasHeight * 0.4) {
+            featureType = "mast";
+            confidence = 0.8;
+          } else if (length > Math.min(canvasWidth, canvasHeight) * 0.2) {
+            featureType = "hull_profile";
+            confidence = 0.75;
+          } else {
+            featureType = "deck_edge";
+            confidence = 0.6;
+          }
+        } else {
+          // For interior/general mode, use more diverse categorization
+          // Add some automatic variety for testing
+          featureType = featureTypes[index % featureTypes.length];
+
+          if (isHorizontal && length > canvasWidth * 0.3) {
+            if (avgY < canvasHeight * 0.3) {
+              featureType = "deck_edge"; // Top horizontal features (like countertops, shelves)
+              confidence = 0.8;
+            } else if (avgY > canvasHeight * 0.7) {
+              featureType = "waterline"; // Bottom horizontal features (like floor lines)
+              confidence = 0.8;
+            } else {
+              featureType = "hull_profile"; // Middle horizontal features
+              confidence = 0.7;
+            }
+          } else if (isVertical && length > canvasHeight * 0.4) {
+            featureType = "mast"; // Vertical features (like doors, cabinet edges)
+            confidence = 0.8;
+          } else if (length > Math.min(canvasWidth, canvasHeight) * 0.15) {
+            featureType = "cabin"; // Medium-length features
+            confidence = 0.7;
+          } else {
+            featureType = "keel"; // Short features (like handles, small details)
+            confidence = 0.6;
+          }
+        }
+
+        console.log(`Assigned type: ${featureType}, confidence: ${confidence}`);
+
+        return {
+          ...feature,
+          type: featureType,
+          confidence,
+          metadata: {
+            ...feature.metadata,
+            length: length.toFixed(1),
+            orientation: isHorizontal
+              ? "horizontal"
+              : isVertical
+              ? "vertical"
+              : "diagonal",
+            position: `${((avgX / canvasWidth) * 100).toFixed(0)}%,${(
+              (avgY / canvasHeight) *
+              100
+            ).toFixed(0)}%`,
+            detectionMethod: "edge_detection",
+          },
+        };
+      });
+    },
+    []
+  );
+
   const generateYachtFeatures = useCallback((): YachtFeature[] => {
     const canvas = canvasRef.current;
     if (!canvas) return [];
@@ -274,8 +411,27 @@ export function ImageToCAD() {
       );
       ctx.putImageData(processedData, 0, 0);
 
-      // Generate yacht features
-      const features = generateYachtFeatures();
+      // Extract actual features from the processed image
+      const rawFeatures = extractLinesFromEdges(processedData, 5); // Lowered from 10
+      console.log(
+        `Detected ${rawFeatures.length} raw features from edge detection`
+      );
+
+      // Categorize features based on their characteristics
+      const features = categorizeDetectedFeatures(
+        rawFeatures,
+        canvas.width,
+        canvas.height,
+        settings.conversionMode
+      );
+      console.log(
+        "Categorized features:",
+        features.map((f) => ({
+          type: f.type,
+          confidence: f.confidence,
+          pointCount: f.points.length,
+        }))
+      );
       setDetectedFeatures(features);
 
       // Generate CAD output
@@ -364,7 +520,9 @@ export function ImageToCAD() {
             >
               <div className="text-4xl mb-4">🖼️</div>
               <p className="text-lg mb-2">
-                {isUploading ? "Processing image..." : "Click or drag yacht photos here"}
+                {isUploading
+                  ? "Processing image..."
+                  : "Click or drag yacht photos here"}
               </p>
               <small className="opacity-70">
                 Supports JPG, PNG, WebP formats
