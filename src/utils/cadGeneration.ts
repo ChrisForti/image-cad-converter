@@ -219,14 +219,70 @@ export const estimateGeneralDimensions = (
   };
 };
 
-// Simple DXF generator for line drawings
+// Simple DXF generator - minimal format that FreeCAD can reliably import
 export const generateDXF = (
   features: YachtFeature[],
   scale: number = 1
 ): string => {
   const lines: string[] = [];
 
-  // DXF header
+  // Minimal DXF header
+  lines.push(
+    "0",
+    "SECTION",
+    "2",
+    "HEADER",
+    "9",
+    "$ACADVER",
+    "1",
+    "AC1015",
+    "9",
+    "$INSUNITS",
+    "70",
+    "4",
+    "0",
+    "ENDSEC"
+  );
+
+  // Minimal tables section
+  lines.push(
+    "0",
+    "SECTION",
+    "2",
+    "TABLES",
+    "0",
+    "TABLE",
+    "2",
+    "LAYER",
+    "5",
+    "2",
+    "100",
+    "AcDbSymbolTable",
+    "70",
+    "1",
+    "0",
+    "LAYER",
+    "5",
+    "10",
+    "100",
+    "AcDbSymbolTableRecord",
+    "100",
+    "AcDbLayerTableRecord",
+    "2",
+    "0",
+    "70",
+    "0",
+    "62",
+    "7",
+    "6",
+    "CONTINUOUS",
+    "0",
+    "ENDTAB",
+    "0",
+    "ENDSEC"
+  );
+
+  // Entities section
   lines.push("0", "SECTION", "2", "ENTITIES");
 
   // Convert features to simple lines
@@ -240,16 +296,26 @@ export const generateDXF = (
         lines.push(
           "0",
           "LINE",
+          "5",
+          `${Math.random().toString(36).substr(2, 8)}`,
+          "100",
+          "AcDbEntity",
           "8",
-          feature.type.toUpperCase(),
+          "0",
+          "100",
+          "AcDbLine",
           "10",
           (p1.x / scale).toFixed(3),
           "20",
           (p1.y / scale).toFixed(3),
+          "30",
+          "0.0",
           "11",
           (p2.x / scale).toFixed(3),
           "21",
-          (p2.y / scale).toFixed(3)
+          (p2.y / scale).toFixed(3),
+          "31",
+          "0.0"
         );
       }
     }
@@ -292,7 +358,7 @@ export const generateSVG = (
   return lines.join("\n");
 };
 
-// DXF with dimension annotations
+// DXF with dimension annotations - reliable format for FreeCAD
 export const generateDXFWithDimensions = (
   features: YachtFeature[],
   scale: number,
@@ -306,7 +372,63 @@ export const generateDXFWithDimensions = (
 ): string => {
   const lines: string[] = [];
 
-  // DXF header
+  // Minimal DXF header
+  lines.push(
+    "0",
+    "SECTION",
+    "2",
+    "HEADER",
+    "9",
+    "$ACADVER",
+    "1",
+    "AC1015",
+    "9",
+    "$INSUNITS",
+    "70",
+    "4",
+    "0",
+    "ENDSEC"
+  );
+
+  // Minimal tables section
+  lines.push(
+    "0",
+    "SECTION",
+    "2",
+    "TABLES",
+    "0",
+    "TABLE",
+    "2",
+    "LAYER",
+    "5",
+    "2",
+    "100",
+    "AcDbSymbolTable",
+    "70",
+    "1",
+    "0",
+    "LAYER",
+    "5",
+    "10",
+    "100",
+    "AcDbSymbolTableRecord",
+    "100",
+    "AcDbLayerTableRecord",
+    "2",
+    "0",
+    "70",
+    "0",
+    "62",
+    "7",
+    "6",
+    "CONTINUOUS",
+    "0",
+    "ENDTAB",
+    "0",
+    "ENDSEC"
+  );
+
+  // Entities section
   lines.push("0", "SECTION", "2", "ENTITIES");
 
   // Convert features to simple lines
@@ -320,31 +442,49 @@ export const generateDXFWithDimensions = (
         lines.push(
           "0",
           "LINE",
+          "5",
+          `${Math.random().toString(36).substr(2, 8)}`,
+          "100",
+          "AcDbEntity",
           "8",
-          feature.type.toUpperCase(),
+          "0",
+          "100",
+          "AcDbLine",
           "10",
           (p1.x / scale).toFixed(3),
           "20",
           (p1.y / scale).toFixed(3),
+          "30",
+          "0.0",
           "11",
           (p2.x / scale).toFixed(3),
           "21",
-          (p2.y / scale).toFixed(3)
+          (p2.y / scale).toFixed(3),
+          "31",
+          "0.0"
         );
       }
     }
   });
 
-  // Add dimension text annotations for furniture/components
+  // Add dimension text annotations
   lines.push(
     "0",
     "TEXT",
+    "5",
+    `${Math.random().toString(36).substr(2, 8)}`,
+    "100",
+    "AcDbEntity",
     "8",
-    "DIMENSIONS",
+    "0",
+    "100",
+    "AcDbText",
     "10",
     "10",
     "20",
     "10",
+    "30",
+    "0.0",
     "40",
     "2.0",
     "1",
@@ -352,15 +492,26 @@ export const generateDXFWithDimensions = (
       0
     )}cm x H${(estimates.height * 100).toFixed(0)}cm x D${(
       estimates.depth * 100
-    ).toFixed(0)}cm`,
+    ).toFixed(0)}cm`
+  );
+
+  lines.push(
     "0",
     "TEXT",
+    "5",
+    `${Math.random().toString(36).substr(2, 8)}`,
+    "100",
+    "AcDbEntity",
     "8",
-    "DIMENSIONS",
+    "0",
+    "100",
+    "AcDbText",
     "10",
     "10",
     "20",
     "15",
+    "30",
+    "0.0",
     "40",
     "2.0",
     "1",

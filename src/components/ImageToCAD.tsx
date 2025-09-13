@@ -725,31 +725,33 @@ export function ImageToCAD() {
 
         {/* CAD Output Panel */}
         <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 mb-8 transition-colors duration-300">
-          <h2 className="text-2xl font-semibold mb-6 text-blue-200 flex items-center gap-2">
-            <Settings className="w-6 h-6" />
-            CAD Output
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <h2 className="text-2xl font-semibold text-blue-200 flex items-center gap-2">
+              <Settings className="w-6 h-6" />
+              CAD Output
+            </h2>
 
-          <div className="bg-black rounded-lg p-4 font-mono text-sm overflow-x-auto min-h-[300px] mb-4">
-            <pre className="whitespace-pre-wrap">{cadOutput}</pre>
+            <div className="flex gap-3">
+              <button
+                onClick={() => downloadCAD(settings)}
+                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
+              >
+                <Download className="w-4 h-4" />
+                Download CAD
+              </button>
+
+              <button
+                onClick={() => copyToClipboard()}
+                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
+              >
+                <Copy className="w-4 h-4" />
+                Copy
+              </button>
+            </div>
           </div>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => downloadCAD(settings)}
-              className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
-            >
-              <Download className="w-4 h-4" />
-              Download CAD File
-            </button>
-
-            <button
-              onClick={() => copyToClipboard()}
-              className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
-            >
-              <Copy className="w-4 h-4" />
-              Copy to Clipboard
-            </button>
+          <div className="bg-black rounded-lg p-4 font-mono text-sm overflow-x-auto min-h-[300px]">
+            <pre className="whitespace-pre-wrap">{cadOutput}</pre>
           </div>
         </div>
 
