@@ -7,6 +7,9 @@ import {
   Target,
   Trash2,
   Play,
+  Box,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   Point,
@@ -21,12 +24,13 @@ import {
 import { generateCADOutput } from "../utils/cadGeneration.js";
 import { useImageUpload } from "../hooks/useImageUpload.js";
 import { useCADOutput } from "../hooks/useCADOutput.js";
+import { ThreeJSViewer } from "./ThreeJSViewer.js";
 
 export function ImageToCAD() {
   // Custom hooks for business logic
   const { cadOutput, setCadOutput, downloadCAD, copyToClipboard } =
     useCADOutput();
-  const { handleFileUpload, isUploading } = useImageUpload(
+  const { handleFileUpload, isUploading, isConverting } = useImageUpload(
     (img: HTMLImageElement) => {
       setImage(img);
       drawImageToCanvas(img);
@@ -38,6 +42,10 @@ export function ImageToCAD() {
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [referencePoints, setReferencePoints] = useState<ReferencePoint[]>([]);
   const [detectedFeatures, setDetectedFeatures] = useState<YachtFeature[]>([]);
+  const [is3DViewerOpen, setIs3DViewerOpen] = useState<boolean>(false);
+  const [isDetectedFeaturesOpen, setIsDetectedFeaturesOpen] =
+    useState<boolean>(false);
+  const [isCADOutputOpen, setIsCADOutputOpen] = useState<boolean>(false);
   const [settings, setSettings] = useState<ProcessingSettings>({
     edgeMethod: "canny",
     threshold: 100,
@@ -194,125 +202,142 @@ export function ImageToCAD() {
       canvasHeight: number,
       conversionMode: ProcessingSettings["conversionMode"]
     ): YachtFeature[] => {
-      return rawFeatures.map((feature, index) => {
-        const points = feature.points;
-        if (points.length < 2) return feature;
+      return rawFeatures
+        .filter((feature) => {
+          // Filter out very short features to reduce noise
+          if (feature.points.length < 3) return false;
 
-        // Calculate feature characteristics
-        const firstPoint = points[0];
-        const lastPoint = points[points.length - 1];
-        const length = Math.sqrt(
-          Math.pow(lastPoint.x - firstPoint.x, 2) +
-            Math.pow(lastPoint.y - firstPoint.y, 2)
-        );
+          const firstPoint = feature.points[0];
+          const lastPoint = feature.points[feature.points.length - 1];
+          const length = Math.sqrt(
+            Math.pow(lastPoint.x - firstPoint.x, 2) +
+              Math.pow(lastPoint.y - firstPoint.y, 2)
+          );
 
-        // Calculate if line is more horizontal or vertical
-        const deltaX = Math.abs(lastPoint.x - firstPoint.x);
-        const deltaY = Math.abs(lastPoint.y - firstPoint.y);
-        const isHorizontal = deltaX > deltaY;
-        const isVertical = deltaY > deltaX;
+          // Only keep features that are at least 20 pixels long
+          return length >= 20;
+        })
+        .map((feature, index) => {
+          const points = feature.points;
+          if (points.length < 2) return feature;
 
-        // Calculate average position
-        const avgX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
-        const avgY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
+          // Calculate feature characteristics
+          const firstPoint = points[0];
+          const lastPoint = points[points.length - 1];
+          const length = Math.sqrt(
+            Math.pow(lastPoint.x - firstPoint.x, 2) +
+              Math.pow(lastPoint.y - firstPoint.y, 2)
+          );
 
-        console.log(
-          `Feature analysis: length=${length.toFixed(
-            1
-          )}, isHorizontal=${isHorizontal}, isVertical=${isVertical}, avgX=${avgX.toFixed(
-            1
-          )}, avgY=${avgY.toFixed(
-            1
-          )}, canvasW=${canvasWidth}, canvasH=${canvasHeight}, mode=${conversionMode}`
-        );
+          // Calculate if line is more horizontal or vertical
+          const deltaX = Math.abs(lastPoint.x - firstPoint.x);
+          const deltaY = Math.abs(lastPoint.y - firstPoint.y);
+          const isHorizontal = deltaX > deltaY;
+          const isVertical = deltaY > deltaX;
 
-        // Categorize based on conversion mode and characteristics
-        let featureType: YachtFeature["type"] = "hull_profile";
-        let confidence = 0.7;
+          // Calculate average position
+          const avgX = points.reduce((sum, p) => sum + p.x, 0) / points.length;
+          const avgY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
 
-        // Add some variety by using index for testing
-        const featureTypes: YachtFeature["type"][] = [
-          "hull_profile",
-          "waterline",
-          "mast",
-          "deck_edge",
-          "cabin",
-          "keel",
-        ];
+          console.log(
+            `Feature analysis: length=${length.toFixed(
+              1
+            )}, isHorizontal=${isHorizontal}, isVertical=${isVertical}, avgX=${avgX.toFixed(
+              1
+            )}, avgY=${avgY.toFixed(
+              1
+            )}, canvasW=${canvasWidth}, canvasH=${canvasHeight}, mode=${conversionMode}`
+          );
 
-        if (conversionMode === "yacht") {
-          // Yacht-specific categorization with more flexible thresholds
-          if (isHorizontal && length > canvasWidth * 0.3) {
-            if (avgY > canvasHeight * 0.7) {
-              featureType = "waterline";
-              confidence = 0.9;
-            } else if (avgY < canvasHeight * 0.3) {
-              featureType = "deck_edge";
+          // Categorize based on conversion mode and characteristics
+          let featureType: YachtFeature["type"] = "hull_profile";
+          let confidence = 0.7;
+
+          // Add some variety by using index for testing
+          const featureTypes: YachtFeature["type"][] = [
+            "hull_profile",
+            "waterline",
+            "mast",
+            "deck_edge",
+            "cabin",
+            "keel",
+          ];
+
+          if (conversionMode === "yacht") {
+            // Yacht-specific categorization with more flexible thresholds
+            if (isHorizontal && length > canvasWidth * 0.3) {
+              if (avgY > canvasHeight * 0.7) {
+                featureType = "waterline";
+                confidence = 0.9;
+              } else if (avgY < canvasHeight * 0.3) {
+                featureType = "deck_edge";
+                confidence = 0.8;
+              } else {
+                featureType = "hull_profile";
+                confidence = 0.85;
+              }
+            } else if (isVertical && length > canvasHeight * 0.4) {
+              featureType = "mast";
               confidence = 0.8;
-            } else {
+            } else if (length > Math.min(canvasWidth, canvasHeight) * 0.2) {
               featureType = "hull_profile";
-              confidence = 0.85;
-            }
-          } else if (isVertical && length > canvasHeight * 0.4) {
-            featureType = "mast";
-            confidence = 0.8;
-          } else if (length > Math.min(canvasWidth, canvasHeight) * 0.2) {
-            featureType = "hull_profile";
-            confidence = 0.75;
-          } else {
-            featureType = "deck_edge";
-            confidence = 0.6;
-          }
-        } else {
-          // For interior/general mode, use more diverse categorization
-          // Add some automatic variety for testing
-          featureType = featureTypes[index % featureTypes.length];
-
-          if (isHorizontal && length > canvasWidth * 0.3) {
-            if (avgY < canvasHeight * 0.3) {
-              featureType = "deck_edge"; // Top horizontal features (like countertops, shelves)
-              confidence = 0.8;
-            } else if (avgY > canvasHeight * 0.7) {
-              featureType = "waterline"; // Bottom horizontal features (like floor lines)
-              confidence = 0.8;
+              confidence = 0.75;
             } else {
-              featureType = "hull_profile"; // Middle horizontal features
-              confidence = 0.7;
+              featureType = "deck_edge";
+              confidence = 0.6;
             }
-          } else if (isVertical && length > canvasHeight * 0.4) {
-            featureType = "mast"; // Vertical features (like doors, cabinet edges)
-            confidence = 0.8;
-          } else if (length > Math.min(canvasWidth, canvasHeight) * 0.15) {
-            featureType = "cabin"; // Medium-length features
-            confidence = 0.7;
           } else {
-            featureType = "keel"; // Short features (like handles, small details)
-            confidence = 0.6;
+            // For interior/general mode, use more diverse categorization
+            // Add some automatic variety for testing
+            featureType = featureTypes[index % featureTypes.length];
+
+            if (isHorizontal && length > canvasWidth * 0.3) {
+              if (avgY < canvasHeight * 0.3) {
+                featureType = "deck_edge"; // Top horizontal features (like countertops, shelves)
+                confidence = 0.8;
+              } else if (avgY > canvasHeight * 0.7) {
+                featureType = "waterline"; // Bottom horizontal features (like floor lines)
+                confidence = 0.8;
+              } else {
+                featureType = "hull_profile"; // Middle horizontal features
+                confidence = 0.7;
+              }
+            } else if (isVertical && length > canvasHeight * 0.4) {
+              featureType = "mast"; // Vertical features (like doors, cabinet edges)
+              confidence = 0.8;
+            } else if (length > Math.min(canvasWidth, canvasHeight) * 0.15) {
+              featureType = "cabin"; // Medium-length features
+              confidence = 0.7;
+            } else {
+              featureType = "keel"; // Short features (like handles, small details)
+              confidence = 0.6;
+            }
           }
-        }
 
-        console.log(`Assigned type: ${featureType}, confidence: ${confidence}`);
+          console.log(
+            `Assigned type: ${featureType}, confidence: ${confidence}`
+          );
 
-        return {
-          ...feature,
-          type: featureType,
-          confidence,
-          metadata: {
-            ...feature.metadata,
-            length: length.toFixed(1),
-            orientation: isHorizontal
-              ? "horizontal"
-              : isVertical
-              ? "vertical"
-              : "diagonal",
-            position: `${((avgX / canvasWidth) * 100).toFixed(0)}%,${(
-              (avgY / canvasHeight) *
-              100
-            ).toFixed(0)}%`,
-            detectionMethod: "edge_detection",
-          },
-        };
-      });
+          return {
+            ...feature,
+            type: featureType,
+            confidence,
+            metadata: {
+              ...feature.metadata,
+              length: length.toFixed(1),
+              orientation: isHorizontal
+                ? "horizontal"
+                : isVertical
+                ? "vertical"
+                : "diagonal",
+              position: `${((avgX / canvasWidth) * 100).toFixed(0)}%,${(
+                (avgY / canvasHeight) *
+                100
+              ).toFixed(0)}%`,
+              detectionMethod: "edge_detection",
+            },
+          };
+        });
     },
     []
   );
@@ -412,7 +437,7 @@ export function ImageToCAD() {
       ctx.putImageData(processedData, 0, 0);
 
       // Extract actual features from the processed image
-      const rawFeatures = extractLinesFromEdges(processedData, 5); // Lowered from 10
+      const rawFeatures = extractLinesFromEdges(processedData, 15); // Increased to reduce noise
       console.log(
         `Detected ${rawFeatures.length} raw features from edge detection`
       );
@@ -423,6 +448,9 @@ export function ImageToCAD() {
         canvas.width,
         canvas.height,
         settings.conversionMode
+      );
+      console.log(
+        `Filtered to ${features.length} significant features (from ${rawFeatures.length} raw features)`
       );
       console.log(
         "Categorized features:",
@@ -518,21 +546,23 @@ export function ImageToCAD() {
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
             >
-              <div className="text-4xl mb-4">🖼️</div>
+              <div className="text-6xl mb-4 tracking-widest">🛥️</div>
               <p className="text-lg mb-2">
-                {isUploading
+                {isConverting
+                  ? "Converting HEIC image..."
+                  : isUploading
                   ? "Processing image..."
                   : "Click or drag yacht photos here"}
               </p>
               <small className="opacity-70">
-                Supports JPG, PNG, WebP formats
+                Supports JPG, PNG, WebP, HEIC formats
               </small>
             </div>
 
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/*,.heic,.heif"
               className="hidden"
               onChange={(e) => handleFileUpload(e.target.files?.[0] || null)}
             />
@@ -644,42 +674,74 @@ export function ImageToCAD() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 mt-6">
-              <button
-                onClick={processImage}
-                disabled={!image || isProcessing}
-                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Play className="w-4 h-4" />
-                {isProcessing ? "Processing..." : "Process Image"}
-              </button>
+            <div className="flex flex-wrap gap-3 mt-6 justify-between">
+              {/* Processing Controls */}
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={processImage}
+                  disabled={!image || isProcessing}
+                  className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Play className="w-4 h-4" />
+                  {isProcessing ? "Processing..." : "Process Image"}
+                </button>
 
-              <button
-                onClick={() =>
-                  alert(
-                    "Click on the image to add reference points for scale calibration"
-                  )
-                }
-                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
-              >
-                <Target className="w-4 h-4" />
-                Add Reference
-              </button>
+                <button
+                  onClick={() =>
+                    alert(
+                      "Click on the image to add reference points for scale calibration"
+                    )
+                  }
+                  className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                >
+                  <Target className="w-4 h-4" />
+                  Add Reference
+                </button>
 
-              <button
-                onClick={clearAll}
-                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
-              >
-                <Trash2 className="w-4 h-4" />
-                Clear All
-              </button>
+                <button
+                  onClick={clearAll}
+                  className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear All
+                </button>
+              </div>
+
+              {/* CAD Output Buttons */}
+              {detectedFeatures.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  <button
+                    onClick={() => downloadCAD(settings)}
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    Download CAD
+                  </button>
+
+                  <button
+                    onClick={() => copyToClipboard()}
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                  >
+                    <Copy className="w-4 h-4" />
+                    Copy to Clipboard
+                  </button>
+
+                  <button
+                    onClick={() => setIs3DViewerOpen(true)}
+                    className="flex items-center gap-2 bg-gradient-to-r from-purple-500 to-blue-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                  >
+                    <Box className="w-4 h-4" />
+                    View CAD
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Image Preview Panel */}
           <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 transition-colors duration-300">
             <h2 className="text-2xl font-semibold mb-6 text-blue-200">
-              🖼️ Image Preview
+              🛥️ Image Preview
             </h2>
 
             <div className="relative">
@@ -704,20 +766,32 @@ export function ImageToCAD() {
             {/* Feature Detection Status */}
             {detectedFeatures.length > 0 && (
               <div className="mt-4 text-sm">
-                <p className="font-semibold text-blue-200 mb-2">
-                  Detected Features:
-                </p>
-                <div className="space-y-1">
-                  {detectedFeatures.map((feature, index) => (
-                    <div
-                      key={index}
-                      className="flex justify-between opacity-80"
-                    >
-                      <span>{feature.type.replace("_", " ")}</span>
-                      <span>{Math.round(feature.confidence * 100)}%</span>
-                    </div>
-                  ))}
-                </div>
+                <button
+                  onClick={() =>
+                    setIsDetectedFeaturesOpen(!isDetectedFeaturesOpen)
+                  }
+                  className="flex items-center justify-between w-full font-semibold text-gray-800 dark:text-gray-200 mb-2 hover:text-gray-600 dark:hover:text-gray-100 transition-colors"
+                >
+                  <span>Detected Features ({detectedFeatures.length})</span>
+                  {isDetectedFeaturesOpen ? (
+                    <ChevronUp className="w-4 h-4" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </button>
+                {isDetectedFeaturesOpen && (
+                  <div className="space-y-1">
+                    {detectedFeatures.map((feature, index) => (
+                      <div
+                        key={index}
+                        className="flex justify-between opacity-80"
+                      >
+                        <span>{feature.type.replace("_", " ")}</span>
+                        <span>{Math.round(feature.confidence * 100)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -725,34 +799,26 @@ export function ImageToCAD() {
 
         {/* CAD Output Panel */}
         <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 mb-8 transition-colors duration-300">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-            <h2 className="text-2xl font-semibold text-blue-200 flex items-center gap-2">
+          <button
+            onClick={() => setIsCADOutputOpen(!isCADOutputOpen)}
+            className="flex items-center justify-between w-full text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-200 hover:text-gray-600 dark:hover:text-gray-100 transition-colors"
+          >
+            <div className="flex items-center gap-2">
               <Settings className="w-6 h-6" />
               CAD Output
-            </h2>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => downloadCAD(settings)}
-                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
-              >
-                <Download className="w-4 h-4" />
-                Download CAD
-              </button>
-
-              <button
-                onClick={() => copyToClipboard()}
-                className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all text-sm"
-              >
-                <Copy className="w-4 h-4" />
-                Copy
-              </button>
             </div>
-          </div>
+            {isCADOutputOpen ? (
+              <ChevronUp className="w-6 h-6" />
+            ) : (
+              <ChevronDown className="w-6 h-6" />
+            )}
+          </button>
 
-          <div className="bg-black rounded-lg p-4 font-mono text-sm overflow-x-auto min-h-[300px]">
-            <pre className="whitespace-pre-wrap">{cadOutput}</pre>
-          </div>
+          {isCADOutputOpen && (
+            <div className="bg-black rounded-lg p-4 font-mono text-sm overflow-x-auto min-h-[300px]">
+              <pre className="whitespace-pre-wrap">{cadOutput}</pre>
+            </div>
+          )}
         </div>
 
         {/* Features Panel */}
@@ -799,6 +865,15 @@ export function ImageToCAD() {
             </div>
           </div>
         </div>
+
+        {/* 3D Viewer Modal */}
+        <ThreeJSViewer
+          features={detectedFeatures}
+          isOpen={is3DViewerOpen}
+          onClose={() => setIs3DViewerOpen(false)}
+          canvasWidth={canvasRef.current?.width || 500}
+          canvasHeight={canvasRef.current?.height || 400}
+        />
       </div>
     </div>
   );
