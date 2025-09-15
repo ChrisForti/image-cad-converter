@@ -10,6 +10,8 @@ import {
   Box,
   ChevronDown,
   ChevronUp,
+  CheckCircle,
+  X,
 } from "lucide-react";
 import {
   Point,
@@ -46,6 +48,19 @@ export function ImageToCAD() {
   const [isDetectedFeaturesOpen, setIsDetectedFeaturesOpen] =
     useState<boolean>(false);
   const [isCADOutputOpen, setIsCADOutputOpen] = useState<boolean>(false);
+
+  // Scale calibration state
+  const [isScaleMode, setIsScaleMode] = useState<boolean>(false);
+  const [scalePoints, setScalePoints] = useState<ReferencePoint[]>([]);
+  const [knownDistance, setKnownDistance] = useState<number>(100); // mm
+  const [pixelsPerMM, setPixelsPerMM] = useState<number>(1);
+
+  // Conversion tool state
+  const [conversionInput, setConversionInput] = useState<string>("");
+  const [conversionUnit, setConversionUnit] = useState<"inches" | "feet">(
+    "feet"
+  );
+
   const [settings, setSettings] = useState<ProcessingSettings>({
     edgeMethod: "canny",
     threshold: 100,
@@ -149,15 +164,62 @@ export function ImageToCAD() {
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
 
-      const newPoint: ReferencePoint = {
-        x,
-        y,
-        id: referencePoints.length,
-      };
-
-      setReferencePoints((prev) => [...prev, newPoint]);
+      if (isScaleMode) {
+        // Scale calibration mode - only allow 2 points
+        if (scalePoints.length < 2) {
+          const newPoint: ReferencePoint = {
+            x,
+            y,
+            id: scalePoints.length,
+          };
+          setScalePoints((prev) => [...prev, newPoint]);
+        }
+      } else {
+        // Normal reference point mode
+        const newPoint: ReferencePoint = {
+          x,
+          y,
+          id: referencePoints.length,
+        };
+        setReferencePoints((prev) => [...prev, newPoint]);
+      }
     },
-    [referencePoints.length]
+    [referencePoints.length, isScaleMode, scalePoints.length]
+  );
+
+  const calculateScale = useCallback(() => {
+    if (scalePoints.length !== 2 || !knownDistance) return;
+
+    const [point1, point2] = scalePoints;
+    const pixelDistance = Math.sqrt(
+      Math.pow(point2.x - point1.x, 2) + Math.pow(point2.y - point1.y, 2)
+    );
+
+    // Convert known distance to millimeters
+    const distanceInMM = knownDistance * 1000; // Assuming input is in meters
+    const calculatedPixelsPerMM = pixelDistance / distanceInMM;
+
+    setPixelsPerMM(calculatedPixelsPerMM);
+    setIsScaleMode(false); // Exit scale mode after calculation
+  }, [scalePoints, knownDistance]);
+
+  const clearScale = useCallback(() => {
+    setScalePoints([]);
+    setKnownDistance(100);
+    setPixelsPerMM(1);
+    setIsScaleMode(false);
+  }, []);
+
+  // Conversion helper
+  const convertToMM = useCallback(
+    (value: number, unit: "inches" | "feet"): number => {
+      if (unit === "inches") {
+        return value * 25.4; // 1 inch = 25.4 mm
+      } else {
+        return value * 304.8; // 1 foot = 304.8 mm
+      }
+    },
+    []
   );
 
   // Draw reference points with proper canvas context handling
@@ -187,11 +249,42 @@ export function ImageToCAD() {
       ctx.fillText(`P${index + 1}`, point.x + 10, point.y - 10);
       ctx.fillStyle = "#FF6B6B";
     });
-  }, [referencePoints]);
+
+    // Draw scale points in different color
+    if (scalePoints.length > 0) {
+      ctx.fillStyle = "#4ECDC4";
+      ctx.strokeStyle = "#FFFFFF";
+      ctx.lineWidth = 2;
+
+      scalePoints.forEach((point, index) => {
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 8, 0, 2 * Math.PI);
+        ctx.fill();
+        ctx.stroke();
+
+        // Label
+        ctx.fillStyle = "#FFFFFF";
+        ctx.font = "12px Arial";
+        ctx.fillText(`S${index + 1}`, point.x + 10, point.y - 10);
+      });
+
+      // Draw line between scale points if both exist
+      if (scalePoints.length === 2) {
+        ctx.strokeStyle = "#4ECDC4";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(scalePoints[0].x, scalePoints[0].y);
+        ctx.lineTo(scalePoints[1].x, scalePoints[1].y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+  }, [referencePoints, scalePoints]);
 
   useEffect(() => {
     drawReferencePoints();
-  }, [referencePoints, drawReferencePoints]);
+  }, [referencePoints, scalePoints, drawReferencePoints]);
 
   // Generate yacht-specific features
   // Categorize detected features based on their position, orientation, and characteristics
@@ -650,7 +743,93 @@ export function ImageToCAD() {
                   className="w-full p-3 bg-white/90 text-gray-800 rounded-lg"
                 />
               </div>
+            </div>
 
+            {/* Scale Calibration Section */}
+            <div className="mt-4 p-4 bg-white/5 rounded-lg border border-blue-300/30">
+              <h3 className="text-lg font-medium text-blue-200 mb-3 flex items-center gap-2">
+                <Target className="w-5 h-5" />
+                Scale Calibration
+                {pixelsPerMM && (
+                  <span className="text-sm text-green-400 ml-2">
+                    ✓ Calibrated ({pixelsPerMM.toFixed(2)} px/mm)
+                  </span>
+                )}
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-blue-200 mb-2">
+                    Known Distance (meters)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={knownDistance}
+                    onChange={(e) =>
+                      setKnownDistance(parseFloat(e.target.value) || 0)
+                    }
+                    className="w-full p-2 bg-white/90 text-gray-800 rounded-lg text-sm"
+                    placeholder="e.g., 2.5"
+                  />
+                </div>
+
+                <div className="flex items-end gap-2">
+                  <button
+                    onClick={() => setIsScaleMode(!isScaleMode)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all text-sm ${
+                      isScaleMode
+                        ? "bg-orange-500 text-white"
+                        : "bg-blue-500 text-white hover:bg-blue-600"
+                    }`}
+                  >
+                    <Target className="w-4 h-4" />
+                    {isScaleMode ? "Exit Scale Mode" : "Set Scale"}
+                  </button>
+
+                  {scalePoints.length === 2 && knownDistance > 0 && (
+                    <button
+                      onClick={calculateScale}
+                      className="flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition-all text-sm"
+                    >
+                      <CheckCircle className="w-4 h-4" />
+                      Calculate
+                    </button>
+                  )}
+
+                  {(scalePoints.length > 0 || pixelsPerMM) && (
+                    <button
+                      onClick={clearScale}
+                      className="flex items-center gap-2 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition-all text-sm"
+                    >
+                      <X className="w-4 h-4" />
+                      Clear
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {isScaleMode && (
+                <div className="mt-3 p-3 bg-blue-500/20 rounded-lg">
+                  <p className="text-sm text-blue-200">
+                    📐 Click two points on the image that represent a known
+                    distance. Points: {scalePoints.length}/2
+                  </p>
+                </div>
+              )}
+
+              {pixelsPerMM && (
+                <div className="mt-3 p-3 bg-green-500/20 rounded-lg">
+                  <p className="text-sm text-green-200">
+                    ✅ Scale calibrated! Real-world measurements will be
+                    accurate.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-sm font-medium text-blue-200 mb-2">
                   Output Format
@@ -687,16 +866,40 @@ export function ImageToCAD() {
                 </button>
 
                 <button
-                  onClick={() =>
-                    alert(
-                      "Click on the image to add reference points for scale calibration"
-                    )
-                  }
-                  className="flex items-center gap-2 bg-gradient-to-r from-red-500 to-teal-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                  onClick={() => setIsScaleMode(!isScaleMode)}
+                  className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all ${
+                    isScaleMode
+                      ? "bg-gradient-to-r from-orange-500 to-red-500 text-white"
+                      : "bg-gradient-to-r from-red-500 to-teal-400 text-white"
+                  }`}
                 >
                   <Target className="w-4 h-4" />
-                  Add Reference
+                  {isScaleMode ? "Exit Scale Mode" : "Scale Calibration"}
                 </button>
+
+                {isScaleMode && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={knownDistance}
+                      onChange={(e) => setKnownDistance(Number(e.target.value))}
+                      placeholder="Distance (mm)"
+                      className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <span className="text-sm text-gray-600">mm</span>
+                    {scalePoints.length === 2 && (
+                      <span className="text-sm text-green-600 font-medium">
+                        Scale: {pixelsPerMM.toFixed(2)} px/mm
+                      </span>
+                    )}
+                    <button
+                      onClick={clearScale}
+                      className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-all"
+                    >
+                      Clear Scale
+                    </button>
+                  </div>
+                )}
 
                 <button
                   onClick={clearAll}
@@ -744,24 +947,107 @@ export function ImageToCAD() {
               🛥️ Image Preview
             </h2>
 
-            <div className="relative">
-              <canvas
-                ref={canvasRef}
-                onClick={handleCanvasClick}
-                className="max-w-full border rounded-lg cursor-crosshair bg-gray-900"
-                width="500"
-                height="400"
-              />
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Canvas Area */}
+              <div className="flex-1">
+                <div className="relative">
+                  <canvas
+                    ref={canvasRef}
+                    onClick={handleCanvasClick}
+                    className="max-w-full border rounded-lg cursor-crosshair bg-gray-900"
+                    width="500"
+                    height="400"
+                  />
 
-              {isProcessing && (
-                <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-300 mx-auto mb-4"></div>
-                    <p>Processing yacht image...</p>
+                  {isProcessing && (
+                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-300 mx-auto mb-4"></div>
+                        <p>Processing yacht image...</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Unit Conversion Tool */}
+              <div className="w-full lg:w-48 lg:flex-shrink-0">
+                <div className="bg-white/5 backdrop-blur-sm rounded-lg p-3 lg:p-4 border border-white/10">
+                  <h3 className="text-xs lg:text-sm font-medium text-blue-200 mb-2 lg:mb-3">
+                    📏 Unit Converter
+                  </h3>
+
+                  <div className="space-y-2 lg:space-y-3">
+                    <div className="flex gap-1 lg:gap-2">
+                      <button
+                        onClick={() => setConversionUnit("feet")}
+                        className={`px-2 py-1 rounded text-xs font-medium transition-all flex-1 lg:flex-none ${
+                          conversionUnit === "feet"
+                            ? "bg-blue-500 text-white"
+                            : "bg-white/10 text-blue-200 hover:bg-white/20"
+                        }`}
+                      >
+                        Feet
+                      </button>
+                      <button
+                        onClick={() => setConversionUnit("inches")}
+                        className={`px-2 py-1 rounded text-xs font-medium transition-all flex-1 lg:flex-none ${
+                          conversionUnit === "inches"
+                            ? "bg-blue-500 text-white"
+                            : "bg-white/10 text-blue-200 hover:bg-white/20"
+                        }`}
+                      >
+                        Inches
+                      </button>
+                    </div>
+
+                    <div>
+                      <input
+                        type="number"
+                        value={conversionInput}
+                        onChange={(e) => setConversionInput(e.target.value)}
+                        placeholder={`Enter ${conversionUnit}`}
+                        className="w-full px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-400"
+                      />
+                    </div>
+
+                    {conversionInput && !isNaN(Number(conversionInput)) && (
+                      <div className="text-xs text-green-300">
+                        ={" "}
+                        {convertToMM(
+                          Number(conversionInput),
+                          conversionUnit
+                        ).toFixed(0)}{" "}
+                        mm
+                      </div>
+                    )}
+
+                    <div className="text-xs text-blue-300/70 leading-relaxed hidden lg:block">
+                      Quick reference:
+                      <br />
+                      • 1 ft = 305 mm
+                      <br />• 1 in = 25.4 mm
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
             </div>
+
+            {/* Scale Calibration Status */}
+            {isScaleMode && (
+              <div className="mt-4 p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg border border-orange-300 dark:border-orange-600">
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                  📐 Scale Calibration Mode
+                </p>
+                <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                  {scalePoints.length === 0
+                    ? "Click two points on the image to define a known distance"
+                    : scalePoints.length === 1
+                    ? "Click the second point to complete the measurement"
+                    : `Scale set: ${pixelsPerMM.toFixed(2)} pixels per mm`}
+                </p>
+              </div>
+            )}
 
             {/* Feature Detection Status */}
             {detectedFeatures.length > 0 && (
