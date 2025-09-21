@@ -890,7 +890,9 @@ export function ImageToCAD() {
                   <div className="flex flex-col gap-3">
                     {/* Conversion Helper */}
                     <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
-                      <span className="text-xs text-blue-700 dark:text-blue-300">📏 Convert:</span>
+                      <span className="text-xs text-blue-700 dark:text-blue-300">
+                        📏 Convert:
+                      </span>
                       <div className="flex items-center gap-1">
                         <input
                           type="number"
@@ -901,7 +903,11 @@ export function ImageToCAD() {
                         />
                         <select
                           value={conversionUnit}
-                          onChange={(e) => setConversionUnit(e.target.value as "inches" | "feet")}
+                          onChange={(e) =>
+                            setConversionUnit(
+                              e.target.value as "inches" | "feet"
+                            )
+                          }
                           className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-400"
                         >
                           <option value="feet">ft</option>
@@ -909,18 +915,25 @@ export function ImageToCAD() {
                         </select>
                         {conversionInput && !isNaN(Number(conversionInput)) && (
                           <span className="text-xs text-blue-700 dark:text-blue-300">
-                            = {convertToMM(Number(conversionInput), conversionUnit).toFixed(0)}mm
+                            ={" "}
+                            {convertToMM(
+                              Number(conversionInput),
+                              conversionUnit
+                            ).toFixed(0)}
+                            mm
                           </span>
                         )}
                       </div>
                     </div>
-                    
+
                     {/* Scale Input */}
                     <div className="flex items-center gap-2">
                       <input
                         type="number"
                         value={knownDistance}
-                        onChange={(e) => setKnownDistance(Number(e.target.value))}
+                        onChange={(e) =>
+                          setKnownDistance(Number(e.target.value))
+                        }
                         placeholder="Distance (mm)"
                         className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
