@@ -61,6 +61,9 @@ export function ImageToCAD() {
     "feet"
   );
 
+  // Fullscreen image state
+  const [isImageFullscreen, setIsImageFullscreen] = useState<boolean>(false);
+
   const [settings, setSettings] = useState<ProcessingSettings>({
     edgeMethod: "canny",
     threshold: 100,
@@ -160,6 +163,12 @@ export function ImageToCAD() {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      // Check if it's a simple click for fullscreen on mobile (when not in scale mode)
+      if (!isScaleMode && window.innerWidth <= 768) {
+        setIsImageFullscreen(true);
+        return;
+      }
+
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
       const y = event.clientY - rect.top;
@@ -175,7 +184,7 @@ export function ImageToCAD() {
           setScalePoints((prev) => [...prev, newPoint]);
         }
       } else {
-        // Normal reference point mode
+        // Normal reference point mode (desktop or when scale mode is off)
         const newPoint: ReferencePoint = {
           x,
           y,
@@ -947,9 +956,19 @@ export function ImageToCAD() {
               🛥️ Image Preview
             </h2>
 
-            <div className="flex flex-col lg:flex-row gap-6">
+            <div className="flex gap-3 md:gap-6">
               {/* Canvas Area */}
               <div className="flex-1">
+                {/* Mobile Fullscreen Button */}
+                {image && (
+                  <button
+                    onClick={() => setIsImageFullscreen(true)}
+                    className="md:hidden w-full mb-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-blue-200 hover:text-white transition-all"
+                  >
+                    🔍 View Full Size
+                  </button>
+                )}
+
                 <div className="relative">
                   <canvas
                     ref={canvasRef}
@@ -971,33 +990,33 @@ export function ImageToCAD() {
               </div>
 
               {/* Unit Conversion Tool */}
-              <div className="w-full lg:w-48 lg:flex-shrink-0">
-                <div className="bg-white/5 backdrop-blur-sm rounded-lg p-3 lg:p-4 border border-white/10">
-                  <h3 className="text-xs lg:text-sm font-medium text-blue-200 mb-2 lg:mb-3">
-                    📏 Unit Converter
+              <div className="w-32 md:w-48 flex-shrink-0">
+                <div className="bg-white/5 backdrop-blur-sm rounded-lg p-2 md:p-4 border border-white/10">
+                  <h3 className="text-xs md:text-sm font-medium text-blue-200 mb-2 md:mb-3">
+                    📏 Converter
                   </h3>
 
-                  <div className="space-y-2 lg:space-y-3">
-                    <div className="flex gap-1 lg:gap-2">
+                  <div className="space-y-2 md:space-y-3">
+                    <div className="flex gap-1 md:gap-2">
                       <button
                         onClick={() => setConversionUnit("feet")}
-                        className={`px-2 py-1 rounded text-xs font-medium transition-all flex-1 lg:flex-none ${
+                        className={`flex-1 md:flex-none px-1 md:px-2 py-1 rounded text-xs font-medium transition-all ${
                           conversionUnit === "feet"
                             ? "bg-blue-500 text-white"
                             : "bg-white/10 text-blue-200 hover:bg-white/20"
                         }`}
                       >
-                        Feet
+                        Ft
                       </button>
                       <button
                         onClick={() => setConversionUnit("inches")}
-                        className={`px-2 py-1 rounded text-xs font-medium transition-all flex-1 lg:flex-none ${
+                        className={`flex-1 md:flex-none px-1 md:px-2 py-1 rounded text-xs font-medium transition-all ${
                           conversionUnit === "inches"
                             ? "bg-blue-500 text-white"
                             : "bg-white/10 text-blue-200 hover:bg-white/20"
                         }`}
                       >
-                        Inches
+                        In
                       </button>
                     </div>
 
@@ -1151,6 +1170,34 @@ export function ImageToCAD() {
             </div>
           </div>
         </div>
+
+        {/* Fullscreen Image Modal */}
+        {isImageFullscreen && image && (
+          <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+            <div className="relative max-w-full max-h-full">
+              {/* Close Button */}
+              <button
+                onClick={() => setIsImageFullscreen(false)}
+                className="absolute top-4 right-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center text-xl transition-all"
+              >
+                ×
+              </button>
+
+              {/* Fullscreen Image */}
+              <img
+                src={image.src}
+                alt="Yacht - Full Size"
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onClick={() => setIsImageFullscreen(false)}
+              />
+
+              {/* Tap to close hint */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
+                Tap to close
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 3D Viewer Modal */}
         <ThreeJSViewer
