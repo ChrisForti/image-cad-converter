@@ -887,26 +887,56 @@ export function ImageToCAD() {
                 </button>
 
                 {isScaleMode && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      value={knownDistance}
-                      onChange={(e) => setKnownDistance(Number(e.target.value))}
-                      placeholder="Distance (mm)"
-                      className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                    <span className="text-sm text-gray-600">mm</span>
-                    {scalePoints.length === 2 && (
-                      <span className="text-sm text-green-600 font-medium">
-                        Scale: {pixelsPerMM.toFixed(2)} px/mm
-                      </span>
-                    )}
-                    <button
-                      onClick={clearScale}
-                      className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-all"
-                    >
-                      Clear Scale
-                    </button>
+                  <div className="flex flex-col gap-3">
+                    {/* Conversion Helper */}
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                      <span className="text-xs text-blue-700 dark:text-blue-300">📏 Convert:</span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          value={conversionInput}
+                          onChange={(e) => setConversionInput(e.target.value)}
+                          placeholder="5"
+                          className="w-16 px-2 py-1 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-400 focus:border-transparent"
+                        />
+                        <select
+                          value={conversionUnit}
+                          onChange={(e) => setConversionUnit(e.target.value as "inches" | "feet")}
+                          className="px-2 py-1 text-xs border border-blue-300 rounded focus:ring-1 focus:ring-blue-400"
+                        >
+                          <option value="feet">ft</option>
+                          <option value="inches">in</option>
+                        </select>
+                        {conversionInput && !isNaN(Number(conversionInput)) && (
+                          <span className="text-xs text-blue-700 dark:text-blue-300">
+                            = {convertToMM(Number(conversionInput), conversionUnit).toFixed(0)}mm
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Scale Input */}
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        value={knownDistance}
+                        onChange={(e) => setKnownDistance(Number(e.target.value))}
+                        placeholder="Distance (mm)"
+                        className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <span className="text-sm text-gray-600">mm</span>
+                      {scalePoints.length === 2 && (
+                        <span className="text-sm text-green-600 font-medium">
+                          Scale: {pixelsPerMM.toFixed(2)} px/mm
+                        </span>
+                      )}
+                      <button
+                        onClick={clearScale}
+                        className="flex items-center gap-1 bg-gray-500 text-white px-3 py-2 rounded-lg text-sm hover:bg-gray-600 transition-all"
+                      >
+                        Clear Scale
+                      </button>
+                    </div>
                   </div>
                 )}
 
@@ -956,100 +986,33 @@ export function ImageToCAD() {
               🛥️ Image Preview
             </h2>
 
-            <div className="flex gap-3 md:gap-6">
-              {/* Canvas Area */}
-              <div className="flex-1">
-                {/* Mobile Fullscreen Button */}
-                {image && (
-                  <button
-                    onClick={() => setIsImageFullscreen(true)}
-                    className="md:hidden w-full mb-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-blue-200 hover:text-white transition-all"
-                  >
-                    🔍 View Full Size
-                  </button>
-                )}
+            {/* Mobile Fullscreen Button */}
+            {image && (
+              <button
+                onClick={() => setIsImageFullscreen(true)}
+                className="md:hidden w-full mb-2 px-3 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-lg text-xs text-blue-200 hover:text-white transition-all"
+              >
+                🔍 View Full Size
+              </button>
+            )}
 
-                <div className="relative">
-                  <canvas
-                    ref={canvasRef}
-                    onClick={handleCanvasClick}
-                    className="max-w-full border rounded-lg cursor-crosshair bg-gray-900"
-                    width="500"
-                    height="400"
-                  />
+            <div className="relative">
+              <canvas
+                ref={canvasRef}
+                onClick={handleCanvasClick}
+                className="max-w-full border rounded-lg cursor-crosshair bg-gray-900"
+                width="500"
+                height="400"
+              />
 
-                  {isProcessing && (
-                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-300 mx-auto mb-4"></div>
-                        <p>Processing yacht image...</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Unit Conversion Tool */}
-              <div className="w-32 md:w-48 flex-shrink-0">
-                <div className="bg-white/5 backdrop-blur-sm rounded-lg p-2 md:p-4 border border-white/10">
-                  <h3 className="text-xs md:text-sm font-medium text-blue-200 mb-2 md:mb-3">
-                    📏 Converter
-                  </h3>
-
-                  <div className="space-y-2 md:space-y-3">
-                    <div className="flex gap-1 md:gap-2">
-                      <button
-                        onClick={() => setConversionUnit("feet")}
-                        className={`flex-1 md:flex-none px-1 md:px-2 py-1 rounded text-xs font-medium transition-all ${
-                          conversionUnit === "feet"
-                            ? "bg-blue-500 text-white"
-                            : "bg-white/10 text-blue-200 hover:bg-white/20"
-                        }`}
-                      >
-                        Ft
-                      </button>
-                      <button
-                        onClick={() => setConversionUnit("inches")}
-                        className={`flex-1 md:flex-none px-1 md:px-2 py-1 rounded text-xs font-medium transition-all ${
-                          conversionUnit === "inches"
-                            ? "bg-blue-500 text-white"
-                            : "bg-white/10 text-blue-200 hover:bg-white/20"
-                        }`}
-                      >
-                        In
-                      </button>
-                    </div>
-
-                    <div>
-                      <input
-                        type="number"
-                        value={conversionInput}
-                        onChange={(e) => setConversionInput(e.target.value)}
-                        placeholder={`Enter ${conversionUnit}`}
-                        className="w-full px-2 py-1 text-xs bg-white/10 border border-white/20 rounded text-white placeholder-white/50 focus:outline-none focus:ring-1 focus:ring-blue-400"
-                      />
-                    </div>
-
-                    {conversionInput && !isNaN(Number(conversionInput)) && (
-                      <div className="text-xs text-green-300">
-                        ={" "}
-                        {convertToMM(
-                          Number(conversionInput),
-                          conversionUnit
-                        ).toFixed(0)}{" "}
-                        mm
-                      </div>
-                    )}
-
-                    <div className="text-xs text-blue-300/70 leading-relaxed hidden lg:block">
-                      Quick reference:
-                      <br />
-                      • 1 ft = 305 mm
-                      <br />• 1 in = 25.4 mm
-                    </div>
+              {isProcessing && (
+                <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-300 mx-auto mb-4"></div>
+                    <p>Processing yacht image...</p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Scale Calibration Status */}
