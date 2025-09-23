@@ -4,9 +4,13 @@ import { Target } from "lucide-react";
 interface BackgroundRemovalState {
   enabled: boolean;
   method: "auto" | "manual" | "color";
+  threshold: number;
+  excludeColors: string[];
   tolerance: number;
   isSelecting: boolean;
+  maskData: ImageData | null;
   selectedAreas: Set<string>;
+  previewMode: boolean;
 }
 
 interface ImageModificationPanelProps {

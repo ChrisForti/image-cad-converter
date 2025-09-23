@@ -14,7 +14,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  Point,
   ReferencePoint,
   YachtFeature,
   ProcessingSettings,
@@ -552,71 +551,6 @@ export function ImageToCAD() {
     []
   );
 
-  const _generateYachtFeatures = useCallback((): YachtFeature[] => {
-    const canvas = canvasRef.current;
-    if (!canvas) return [];
-
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // Generate hull profile with proper curve
-    const hullPoints: Point[] = [];
-    for (let x = width * 0.1; x < width * 0.9; x += 5) {
-      const y =
-        height * 0.7 + Math.sin((x / width) * Math.PI * 2) * height * 0.1;
-      hullPoints.push({ x, y });
-    }
-
-    const features: YachtFeature[] = [
-      {
-        type: "hull_profile",
-        points: hullPoints,
-        confidence: 0.85,
-        metadata: {
-          estimatedLength: (width * 0.8) / settings.scale,
-          curvature: "moderate",
-        },
-      },
-      {
-        type: "waterline",
-        points: [
-          { x: width * 0.1, y: height * 0.75 },
-          { x: width * 0.9, y: height * 0.75 },
-        ],
-        confidence: 0.92,
-        metadata: {
-          length: (width * 0.8) / settings.scale,
-        },
-      },
-      {
-        type: "mast",
-        points: [
-          { x: width * 0.4, y: height * 0.1 },
-          { x: width * 0.4, y: height * 0.7 },
-        ],
-        confidence: 0.78,
-        metadata: {
-          height: (height * 0.6) / settings.scale,
-          position: "center",
-        },
-      },
-      {
-        type: "deck_edge",
-        points: Array.from({ length: 20 }, (_, i) => ({
-          x: width * 0.2 + (i * width * 0.6) / 19,
-          y: height * 0.6 + Math.random() * 5 - 2.5,
-        })),
-        confidence: 0.81,
-        metadata: {
-          style: "modern",
-          clearance: "standard",
-        },
-      },
-    ];
-
-    return features;
-  }, [settings.scale]);
-
   // Main processing function with error handling
   const processImage = useCallback(async (): Promise<void> => {
     if (!image) {
@@ -704,7 +638,14 @@ export function ImageToCAD() {
     } finally {
       setIsProcessing(false);
     }
-  }, [image, settings, referencePoints, backgroundRemoval, categorizeDetectedFeatures, setCadOutput]);
+  }, [
+    image,
+    settings,
+    referencePoints,
+    backgroundRemoval,
+    categorizeDetectedFeatures,
+    setCadOutput,
+  ]);
 
   // Event handlers with proper typing
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {

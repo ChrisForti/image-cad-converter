@@ -24,55 +24,58 @@ export function ThreeJSViewer({
   const animationIdRef = useRef<number | null>(null);
   const [viewMode, setViewMode] = useState<"2D" | "3D">("3D");
 
-  const convertFeaturesToMesh = useCallback((
-    features: YachtFeature[],
-    scene: THREE.Scene,
-    canvasW: number,
-    canvasH: number,
-    mode: "2D" | "3D"
-  ) => {
-    // Scale factor to convert canvas pixels to 3D world units
-    const scale = 0.02; // Adjust this to get good proportions
-    const centerX = canvasW / 2;
-    const centerY = canvasH / 2;
+  const convertFeaturesToMesh = useCallback(
+    (
+      features: YachtFeature[],
+      scene: THREE.Scene,
+      canvasW: number,
+      canvasH: number,
+      mode: "2D" | "3D"
+    ) => {
+      // Scale factor to convert canvas pixels to 3D world units
+      const scale = 0.02; // Adjust this to get good proportions
+      const centerX = canvasW / 2;
+      const centerY = canvasH / 2;
 
-    features.forEach((feature, index) => {
-      const points = feature.points;
-      if (points.length < 2) return;
+      features.forEach((feature, index) => {
+        const points = feature.points;
+        if (points.length < 2) return;
 
-      // Create different representations based on view mode and feature type
-      if (mode === "2D") {
-        // In 2D mode, render everything as flat lines at y=0
-        create2DLine(
-          points,
-          scene,
-          scale,
-          centerX,
-          centerY,
-          feature.type,
-          index
-        );
-      } else {
-        // In 3D mode, create volumetric representations with proper extrusion
-        switch (feature.type) {
-          case "hull_profile":
-            createHullProfile(points, scene, scale, centerX, centerY);
-            break;
-          case "waterline":
-            createWaterline(points, scene, scale, centerX, centerY);
-            break;
-          case "mast":
-            createMast(points, scene, scale, centerX, centerY);
-            break;
-          case "deck_edge":
-            createDeckEdge(points, scene, scale, centerX, centerY);
-            break;
-          default:
-            createGenericLine(points, scene, scale, centerX, centerY, index);
+        // Create different representations based on view mode and feature type
+        if (mode === "2D") {
+          // In 2D mode, render everything as flat lines at y=0
+          create2DLine(
+            points,
+            scene,
+            scale,
+            centerX,
+            centerY,
+            feature.type,
+            index
+          );
+        } else {
+          // In 3D mode, create volumetric representations with proper extrusion
+          switch (feature.type) {
+            case "hull_profile":
+              createHullProfile(points, scene, scale, centerX, centerY);
+              break;
+            case "waterline":
+              createWaterline(points, scene, scale, centerX, centerY);
+              break;
+            case "mast":
+              createMast(points, scene, scale, centerX, centerY);
+              break;
+            case "deck_edge":
+              createDeckEdge(points, scene, scale, centerX, centerY);
+              break;
+            default:
+              createGenericLine(points, scene, scale, centerX, centerY, index);
+          }
         }
-      }
-    });
-  }, []);
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (!isOpen || !mountRef.current) return;
@@ -187,7 +190,14 @@ export function ThreeJSViewer({
       }
       renderer.dispose();
     };
-  }, [isOpen, features, canvasWidth, canvasHeight, viewMode, convertFeaturesToMesh]);
+  }, [
+    isOpen,
+    features,
+    canvasWidth,
+    canvasHeight,
+    viewMode,
+    convertFeaturesToMesh,
+  ]);
 
   const create2DLine = (
     points: { x: number; y: number }[],
