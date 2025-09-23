@@ -8,13 +8,11 @@
 **Current Development Tasks:**
 
 **Focus Priority:**
-
 1. **Core 3D rendering** - Get basic extrusion and visualization working
-2. **Standard CAD features** - Constraints, measurements, basic modeling
+2. **Standard CAD features** - Constraints, measurements, basic modeling  
 3. **Marine-specific stuff** - Way down the road
 
 **Why marine features are premature:**
-
 - **Complexity explosion** - Hull surfaces, hydrostatics, etc. are PhD-level problems
 - **Niche market** - Limits broader usability
 - **Foundation first** - Need solid 3D core before specialized features
