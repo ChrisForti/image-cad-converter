@@ -22,9 +22,7 @@ import {
 import {
   applyEdgeDetection,
   extractLinesFromEdges,
-  removeBackgroundByColor,
   magicWandSelect,
-  applyEdgeDetectionWithBackgroundRemoval,
 } from "../utils/imageProcessing.js";
 import { generateCADOutput } from "../utils/cadGeneration.js";
 import { useImageUpload } from "../hooks/useImageUpload.js";
@@ -147,7 +145,7 @@ export function ImageToCAD() {
       }
     };
     setCadOutput(getInitialMessage());
-  }, [settings.conversionMode]);
+  }, [settings.conversionMode, setCadOutput]);
 
   // File upload handler with proper error handling
   // Canvas drawing with proper error handling
@@ -554,7 +552,7 @@ export function ImageToCAD() {
     []
   );
 
-  const generateYachtFeatures = useCallback((): YachtFeature[] => {
+  const _generateYachtFeatures = useCallback((): YachtFeature[] => {
     const canvas = canvasRef.current;
     if (!canvas) return [];
 
@@ -706,7 +704,7 @@ export function ImageToCAD() {
     } finally {
       setIsProcessing(false);
     }
-  }, [image, settings, generateYachtFeatures, referencePoints]);
+  }, [image, settings, referencePoints, backgroundRemoval, categorizeDetectedFeatures, setCadOutput]);
 
   // Event handlers with proper typing
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
