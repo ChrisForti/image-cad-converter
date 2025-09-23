@@ -473,27 +473,6 @@ export function ThreeJSViewer({
     }
   };
 
-  const createHullProfile = (
-    points: { x: number; y: number }[],
-    scene: THREE.Scene,
-    scale: number,
-    centerX: number,
-    centerY: number,
-    materialType: "standard" | "metallic" | "glass" = "standard"
-  ) => {
-    // Use the new extrusion method for hull profiles
-    createExtrudedProfile(
-      points,
-      scene,
-      scale,
-      centerX,
-      centerY,
-      3,
-      0x4a90e2,
-      materialType
-    );
-  };
-
   const createWaterline = (
     points: { x: number; y: number }[],
     scene: THREE.Scene,
@@ -551,68 +530,6 @@ export function ThreeJSViewer({
     );
 
     scene.add(mast);
-  };
-
-  const createDeckEdge = (
-    points: { x: number; y: number }[],
-    scene: THREE.Scene,
-    scale: number,
-    centerX: number,
-    centerY: number
-  ) => {
-    const geometry = new THREE.BufferGeometry();
-    const vertices = [];
-
-    for (let i = 0; i < points.length - 1; i++) {
-      const p1 = points[i];
-      const p2 = points[i + 1];
-
-      vertices.push(
-        (p1.x - centerX) * scale,
-        0.5,
-        (p1.y - centerY) * scale,
-        (p2.x - centerX) * scale,
-        0.5,
-        (p2.y - centerY) * scale
-      );
-    }
-
-    geometry.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(vertices, 3)
-    );
-    const material = new THREE.LineBasicMaterial({
-      color: 0xffa500,
-      linewidth: 2,
-    });
-    const line = new THREE.LineSegments(geometry, material);
-    scene.add(line);
-  };
-
-  const createGenericLine = (
-    points: { x: number; y: number }[],
-    scene: THREE.Scene,
-    scale: number,
-    centerX: number,
-    centerY: number,
-    index: number,
-    extrusionDepth: number = 0.5,
-    materialType: "standard" | "metallic" | "glass" = "standard"
-  ) => {
-    const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0x96ceb4, 0xfeca57];
-    const color = colors[index % colors.length];
-
-    // Use the new extrusion method for generic lines
-    createExtrudedProfile(
-      points,
-      scene,
-      scale,
-      centerX,
-      centerY,
-      extrusionDepth,
-      color,
-      materialType
-    );
   };
 
   if (!isOpen) return null;

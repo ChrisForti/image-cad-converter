@@ -18,13 +18,12 @@ import {
   ReferencePoint,
   YachtFeature,
   ProcessingSettings,
+  CADOutput,
 } from "../types/index.js";
 import {
   applyEdgeDetection,
   extractLinesFromEdges,
-  removeBackgroundByColor,
   magicWandSelect,
-  applyEdgeDetectionWithBackgroundRemoval,
 } from "../utils/imageProcessing.js";
 import { generateCADOutput } from "../utils/cadGeneration.js";
 import { useImageUpload } from "../hooks/useImageUpload.js";
@@ -32,6 +31,7 @@ import { useCADOutput } from "../hooks/useCADOutput.js";
 import { ThreeJSViewer } from "./ThreeJSViewer.js";
 import { ImageModificationPanel } from "./ImageControls/ImageModificationPanel.js";
 import { ImageToolsModal } from "./ImageControls/ImageToolsModal.js";
+import { CADExportPanel } from "./CADOutput/CADExportPanel.js";
 
 export function ImageToCAD() {
   // Custom hooks for business logic
@@ -87,6 +87,14 @@ export function ImageToCAD() {
     useState<boolean>(false);
   const [isImageToolsModalOpen, setIsImageToolsModalOpen] =
     useState<boolean>(false);
+
+  // CAD export panel state
+  const [isCADExportPanelOpen, setIsCADExportPanelOpen] =
+    useState<boolean>(false);
+
+  // Structured CAD data for professional export
+  const [structuredCADOutput, setStructuredCADOutput] =
+    useState<CADOutput | null>(null);
 
   const [settings, setSettings] = useState<ProcessingSettings>({
     edgeMethod: "canny",
@@ -688,6 +696,29 @@ export function ImageToCAD() {
       );
       setDetectedFeatures(features);
 
+      // Create structured CAD output for professional export
+      const structuredOutput: CADOutput = {
+        metadata: {
+          generator: "Image CAD Converter",
+          scale: settings.scale,
+          units: "pixels",
+          timestamp: new Date().toISOString(),
+          imageInfo: {
+            width: canvas.width,
+            height: canvas.height,
+            originalDimensions: image
+              ? {
+                  width: image.naturalWidth,
+                  height: image.naturalHeight,
+                }
+              : undefined,
+          },
+        },
+        features: features,
+        referencePoints: referencePoints,
+      };
+      setStructuredCADOutput(structuredOutput);
+
       // Generate CAD output
       const output = generateCADOutput(
         features,
@@ -1162,19 +1193,27 @@ export function ImageToCAD() {
               {detectedFeatures.length > 0 && (
                 <div className="flex flex-wrap gap-3">
                   <button
-                    onClick={() => downloadCAD(settings)}
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                    onClick={() => setIsCADExportPanelOpen(true)}
+                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
                   >
                     <Download className="w-4 h-4" />
-                    Download CAD
+                    Export CAD
+                  </button>
+
+                  <button
+                    onClick={() => downloadCAD(settings)}
+                    className="flex items-center gap-2 bg-gray-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-gray-700 transition-all"
+                  >
+                    <Download className="w-4 h-4" />
+                    Legacy JSON
                   </button>
 
                   <button
                     onClick={() => copyToClipboard()}
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-400 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
+                    className="flex items-center gap-2 bg-gray-600 text-white px-4 py-3 rounded-lg font-medium hover:bg-gray-700 transition-all"
                   >
                     <Copy className="w-4 h-4" />
-                    Copy to Clipboard
+                    Copy JSON
                   </button>
 
                   <button
@@ -1436,6 +1475,13 @@ export function ImageToCAD() {
           onClose={() => setIs3DViewerOpen(false)}
           canvasWidth={canvasRef.current?.width || 500}
           canvasHeight={canvasRef.current?.height || 400}
+        />
+
+        {/* CAD Export Panel */}
+        <CADExportPanel
+          cadOutput={structuredCADOutput}
+          isOpen={isCADExportPanelOpen}
+          onClose={() => setIsCADExportPanelOpen(false)}
         />
       </div>
     </div>

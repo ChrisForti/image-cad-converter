@@ -1,13 +1,6 @@
 import React from "react";
 import { Target } from "lucide-react";
-
-interface BackgroundRemovalState {
-  enabled: boolean;
-  method: "auto" | "manual" | "color";
-  tolerance: number;
-  isSelecting: boolean;
-  selectedAreas: Set<string>;
-}
+import { BackgroundRemovalState } from "../../types/index.js";
 
 interface ImageModificationPanelProps {
   backgroundRemoval: BackgroundRemovalState;

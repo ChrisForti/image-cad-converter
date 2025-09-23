@@ -1,13 +1,6 @@
 import React from "react";
-import { Target, X } from "lucide-react";
-
-interface BackgroundRemovalState {
-  enabled: boolean;
-  method: "auto" | "manual" | "color";
-  tolerance: number;
-  isSelecting: boolean;
-  selectedAreas: Set<string>;
-}
+import { X, Target } from "lucide-react";
+import { BackgroundRemovalState } from "../../types/index.js";
 
 interface ImageToolsModalProps {
   backgroundRemoval: BackgroundRemovalState;
