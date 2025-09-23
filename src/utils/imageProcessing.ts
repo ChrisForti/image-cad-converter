@@ -199,3 +199,150 @@ export const generateCADOutput = (settings: ProcessingSettings): string => {
 
 SCALE CALIBRATION`;
 };
+
+// Background removal utilities for marine environments
+export interface BackgroundRemovalOptions {
+  method: "auto" | "manual" | "color";
+  threshold: number;
+  excludeColors: string[];
+  tolerance: number;
+}
+
+// Convert hex color to RGB
+function hexToRgb(hex: string): [number, number, number] {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return [r, g, b];
+}
+
+// Calculate color distance
+function colorDistance(
+  r1: number,
+  g1: number,
+  b1: number,
+  r2: number,
+  g2: number,
+  b2: number
+): number {
+  return Math.sqrt((r1 - r2) ** 2 + (g1 - g2) ** 2 + (b1 - b2) ** 2);
+}
+
+// Remove background based on color exclusion
+export function removeBackgroundByColor(
+  imageData: ImageData,
+  options: BackgroundRemovalOptions
+): ImageData {
+  const { data, width, height } = imageData;
+  const result = new ImageData(width, height);
+  const excludeRgb = options.excludeColors.map(hexToRgb);
+
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    const a = data[i + 3];
+
+    // Check if pixel matches any exclude color within tolerance
+    let shouldRemove = false;
+    for (const [er, eg, eb] of excludeRgb) {
+      if (colorDistance(r, g, b, er, eg, eb) <= options.tolerance) {
+        shouldRemove = true;
+        break;
+      }
+    }
+
+    if (shouldRemove) {
+      // Make pixel transparent
+      result.data[i] = 255; // R - white background
+      result.data[i + 1] = 255; // G
+      result.data[i + 2] = 255; // B
+      result.data[i + 3] = 0; // A - transparent
+    } else {
+      // Keep original pixel
+      result.data[i] = r;
+      result.data[i + 1] = g;
+      result.data[i + 2] = b;
+      result.data[i + 3] = a;
+    }
+  }
+
+  return result;
+}
+
+// Enhanced edge detection with background suppression
+export function applyEdgeDetectionWithBackgroundRemoval(
+  imageData: ImageData,
+  settings: ProcessingSettings,
+  backgroundOptions?: BackgroundRemovalOptions
+): ImageData {
+  let processedData = imageData;
+
+  // Apply background removal first if enabled
+  if (backgroundOptions && backgroundOptions.method === "color") {
+    processedData = removeBackgroundByColor(imageData, backgroundOptions);
+  }
+
+  // Apply existing edge detection
+  return applyEdgeDetection(processedData, settings);
+}
+
+// Magic wand selection for manual background removal
+export function magicWandSelect(
+  imageData: ImageData,
+  x: number,
+  y: number,
+  tolerance: number = 30
+): Set<string> {
+  const { data, width, height } = imageData;
+  const selected = new Set<string>();
+
+  if (x < 0 || x >= width || y < 0 || y >= height) return selected;
+
+  const startIdx = (y * width + x) * 4;
+  const targetR = data[startIdx];
+  const targetG = data[startIdx + 1];
+  const targetB = data[startIdx + 2];
+
+  const stack = [{ x, y }];
+  const visited = new Set<string>();
+
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    const key = `${current.x},${current.y}`;
+
+    if (visited.has(key)) continue;
+    visited.add(key);
+
+    const idx = (current.y * width + current.x) * 4;
+    const r = data[idx];
+    const g = data[idx + 1];
+    const b = data[idx + 2];
+
+    if (colorDistance(r, g, b, targetR, targetG, targetB) <= tolerance) {
+      selected.add(key);
+
+      // Add neighbors to stack
+      const neighbors = [
+        { x: current.x - 1, y: current.y },
+        { x: current.x + 1, y: current.y },
+        { x: current.x, y: current.y - 1 },
+        { x: current.x, y: current.y + 1 },
+      ];
+
+      for (const neighbor of neighbors) {
+        if (
+          neighbor.x >= 0 &&
+          neighbor.x < width &&
+          neighbor.y >= 0 &&
+          neighbor.y < height &&
+          !visited.has(`${neighbor.x},${neighbor.y}`)
+        ) {
+          stack.push(neighbor);
+        }
+      }
+    }
+  }
+
+  return selected;
+}

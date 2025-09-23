@@ -22,11 +22,16 @@ import {
 import {
   applyEdgeDetection,
   extractLinesFromEdges,
+  removeBackgroundByColor,
+  magicWandSelect,
+  applyEdgeDetectionWithBackgroundRemoval,
 } from "../utils/imageProcessing.js";
 import { generateCADOutput } from "../utils/cadGeneration.js";
 import { useImageUpload } from "../hooks/useImageUpload.js";
 import { useCADOutput } from "../hooks/useCADOutput.js";
 import { ThreeJSViewer } from "./ThreeJSViewer.js";
+import { ImageModificationPanel } from "./ImageControls/ImageModificationPanel.js";
+import { ImageToolsModal } from "./ImageControls/ImageToolsModal.js";
 
 export function ImageToCAD() {
   // Custom hooks for business logic
@@ -63,6 +68,25 @@ export function ImageToCAD() {
 
   // Fullscreen image state
   const [isImageFullscreen, setIsImageFullscreen] = useState<boolean>(false);
+
+  // Background removal state
+  const [backgroundRemoval, setBackgroundRemoval] = useState({
+    enabled: false,
+    method: "auto" as "auto" | "manual" | "color",
+    threshold: 50,
+    excludeColors: ["#87CEEB", "#FFFFFF", "#000080", "#006994"], // sky, white, navy, water
+    tolerance: 30,
+    isSelecting: false,
+    maskData: null as ImageData | null,
+    selectedAreas: new Set<string>(), // Track selected pixels for preview
+    previewMode: true, // Show selection before applying
+  });
+
+  // Image tools panel state
+  const [isImageToolsPanelVisible, setIsImageToolsPanelVisible] =
+    useState<boolean>(false);
+  const [isImageToolsModalOpen, setIsImageToolsModalOpen] =
+    useState<boolean>(false);
 
   const [settings, setSettings] = useState<ProcessingSettings>({
     edgeMethod: "canny",
@@ -163,15 +187,101 @@ export function ImageToCAD() {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      // Magic wand selection for background removal
+      if (
+        backgroundRemoval.method === "manual" &&
+        backgroundRemoval.enabled &&
+        backgroundRemoval.isSelecting
+      ) {
+        const ctx = canvas.getContext("2d");
+        if (ctx && originalImageDataRef.current) {
+          console.log(
+            "Magic wand clicked at:",
+            x,
+            y,
+            "tolerance:",
+            backgroundRemoval.tolerance
+          );
+
+          // Get current image data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+          // Find selected pixels
+          const selectedPixels = magicWandSelect(
+            imageData,
+            Math.floor(x),
+            Math.floor(y),
+            backgroundRemoval.tolerance
+          );
+
+          console.log("Selected pixels:", selectedPixels.size);
+
+          // Add to existing selection
+          const newSelectedAreas = new Set([
+            ...backgroundRemoval.selectedAreas,
+            ...selectedPixels,
+          ]);
+
+          // Update state with new selection
+          setBackgroundRemoval((prev) => ({
+            ...prev,
+            selectedAreas: newSelectedAreas,
+          }));
+
+          // Show preview highlight
+          if (backgroundRemoval.previewMode) {
+            // Restore original image
+            ctx.putImageData(originalImageDataRef.current, 0, 0);
+
+            // Get fresh image data
+            const previewImageData = ctx.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+
+            // Highlight all selected areas with semi-transparent red
+            newSelectedAreas.forEach((key) => {
+              const [pixelX, pixelY] = key.split(",").map(Number);
+              const pixelIndex = (pixelY * canvas.width + pixelX) * 4;
+              if (
+                pixelIndex >= 0 &&
+                pixelIndex < previewImageData.data.length
+              ) {
+                // Overlay red highlight
+                previewImageData.data[pixelIndex] = Math.min(
+                  255,
+                  previewImageData.data[pixelIndex] + 100
+                ); // More red
+                previewImageData.data[pixelIndex + 1] = Math.max(
+                  0,
+                  previewImageData.data[pixelIndex + 1] - 50
+                ); // Less green
+                previewImageData.data[pixelIndex + 2] = Math.max(
+                  0,
+                  previewImageData.data[pixelIndex + 2] - 50
+                ); // Less blue
+              }
+            });
+
+            ctx.putImageData(previewImageData, 0, 0);
+          }
+
+          // Don't turn off selecting mode - keep it active for multiple selections
+        }
+        return;
+      }
+
       // Check if it's a simple click for fullscreen on mobile (when not in scale mode)
       if (!isScaleMode && window.innerWidth <= 768) {
         setIsImageFullscreen(true);
         return;
       }
-
-      const rect = canvas.getBoundingClientRect();
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
 
       if (isScaleMode) {
         // Scale calibration mode - only allow 2 points
@@ -193,7 +303,7 @@ export function ImageToCAD() {
         setReferencePoints((prev) => [...prev, newPoint]);
       }
     },
-    [referencePoints.length, isScaleMode, scalePoints.length]
+    [referencePoints.length, isScaleMode, scalePoints.length, backgroundRemoval]
   );
 
   const calculateScale = useCallback(() => {
@@ -530,12 +640,26 @@ export function ImageToCAD() {
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-      // Apply edge detection
-      const processedData = applyEdgeDetection(
-        imageData,
-        settings.edgeMethod,
-        settings.threshold
-      );
+      // Apply background removal if enabled
+      let processedData = imageData;
+      if (backgroundRemoval.enabled) {
+        const { applyEdgeDetectionWithBackgroundRemoval } = await import(
+          "../utils/imageProcessing.js"
+        );
+        processedData = applyEdgeDetectionWithBackgroundRemoval(
+          imageData,
+          settings,
+          backgroundRemoval
+        );
+      } else {
+        // Apply standard edge detection
+        processedData = applyEdgeDetection(
+          imageData,
+          settings.edgeMethod,
+          settings.threshold
+        );
+      }
+
       ctx.putImageData(processedData, 0, 0);
 
       // Extract actual features from the processed image
@@ -617,6 +741,78 @@ export function ImageToCAD() {
       }
     }
     originalImageDataRef.current = null;
+  };
+
+  const resetBackgroundRemoval = (): void => {
+    const canvas = canvasRef.current;
+    if (canvas && originalImageDataRef.current) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.putImageData(originalImageDataRef.current, 0, 0);
+      }
+    }
+    // Clear selection state
+    setBackgroundRemoval((prev) => ({
+      ...prev,
+      selectedAreas: new Set(),
+    }));
+  };
+
+  const applySelection = (): void => {
+    const canvas = canvasRef.current;
+    if (
+      canvas &&
+      originalImageDataRef.current &&
+      backgroundRemoval.selectedAreas.size > 0
+    ) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        // Start with original image
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Apply transparency to selected areas
+        backgroundRemoval.selectedAreas.forEach((key) => {
+          const [pixelX, pixelY] = key.split(",").map(Number);
+          const pixelIndex = (pixelY * canvas.width + pixelX) * 4;
+          if (pixelIndex >= 0 && pixelIndex < imageData.data.length) {
+            imageData.data[pixelIndex + 3] = 0; // Set alpha to 0 (transparent)
+          }
+        });
+
+        ctx.putImageData(imageData, 0, 0);
+
+        // Update original image data to include the changes
+        originalImageDataRef.current = ctx.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height
+        );
+
+        // Clear selection
+        setBackgroundRemoval((prev) => ({
+          ...prev,
+          selectedAreas: new Set(),
+          isSelecting: false,
+        }));
+      }
+    }
+  };
+
+  const clearSelection = (): void => {
+    setBackgroundRemoval((prev) => ({
+      ...prev,
+      selectedAreas: new Set(),
+    }));
+
+    // Restore original image without highlights
+    const canvas = canvasRef.current;
+    if (canvas && originalImageDataRef.current) {
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.putImageData(originalImageDataRef.current, 0, 0);
+      }
+    }
   };
 
   return (
@@ -1013,7 +1209,13 @@ export function ImageToCAD() {
               <canvas
                 ref={canvasRef}
                 onClick={handleCanvasClick}
-                className="max-w-full border rounded-lg cursor-crosshair bg-gray-900"
+                className={`max-w-full border rounded-lg bg-gray-900 ${
+                  backgroundRemoval.isSelecting
+                    ? "cursor-pointer"
+                    : isScaleMode
+                    ? "cursor-crosshair"
+                    : "cursor-crosshair"
+                }`}
                 width="500"
                 height="400"
               />
@@ -1026,7 +1228,34 @@ export function ImageToCAD() {
                   </div>
                 </div>
               )}
+
+              {/* Fullscreen Tools Button */}
+              {image && (
+                <button
+                  onClick={() => setIsImageToolsModalOpen(true)}
+                  className="md:hidden absolute top-2 left-2 bg-black/80 backdrop-blur-sm rounded-lg p-2 border border-white/20 text-white hover:bg-black/90 transition-all"
+                >
+                  🛠️
+                </button>
+              )}
             </div>
+
+            {/* Image Tools Panel */}
+            {image && (
+              <div className="mt-4">
+                <ImageModificationPanel
+                  backgroundRemoval={backgroundRemoval}
+                  setBackgroundRemoval={setBackgroundRemoval}
+                  applySelection={applySelection}
+                  clearSelection={clearSelection}
+                  resetBackgroundRemoval={resetBackgroundRemoval}
+                  isVisible={isImageToolsPanelVisible}
+                  onToggleVisibility={() =>
+                    setIsImageToolsPanelVisible(!isImageToolsPanelVisible)
+                  }
+                />
+              </div>
+            )}
 
             {/* Scale Calibration Status */}
             {isScaleMode && (
@@ -1159,12 +1388,26 @@ export function ImageToCAD() {
                 ×
               </button>
 
-              {/* Fullscreen Image */}
-              <img
-                src={image.src}
-                alt="Yacht - Full Size"
-                className="max-w-full max-h-full object-contain rounded-lg"
-                onClick={() => setIsImageFullscreen(false)}
+              {/* Tools Button */}
+              <button
+                onClick={() => setIsImageToolsModalOpen(true)}
+                className="absolute top-4 left-4 z-10 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center text-xl transition-all"
+              >
+                🛠️
+              </button>
+
+              {/* Fullscreen Canvas */}
+              <canvas
+                ref={canvasRef}
+                onClick={handleCanvasClick}
+                className={`max-w-full max-h-full object-contain rounded-lg ${
+                  backgroundRemoval.isSelecting
+                    ? "cursor-pointer"
+                    : isScaleMode
+                    ? "cursor-crosshair"
+                    : "cursor-crosshair"
+                }`}
+                style={{ maxWidth: "90vw", maxHeight: "80vh" }}
               />
 
               {/* Tap to close hint */}
@@ -1174,6 +1417,17 @@ export function ImageToCAD() {
             </div>
           </div>
         )}
+
+        {/* Image Tools Modal */}
+        <ImageToolsModal
+          backgroundRemoval={backgroundRemoval}
+          setBackgroundRemoval={setBackgroundRemoval}
+          applySelection={applySelection}
+          clearSelection={clearSelection}
+          resetBackgroundRemoval={resetBackgroundRemoval}
+          isOpen={isImageToolsModalOpen}
+          onClose={() => setIsImageToolsModalOpen(false)}
+        />
 
         {/* 3D Viewer Modal */}
         <ThreeJSViewer
