@@ -22,9 +22,7 @@ import {
 import {
   applyEdgeDetection,
   extractLinesFromEdges,
-  removeBackgroundByColor,
   magicWandSelect,
-  applyEdgeDetectionWithBackgroundRemoval,
 } from "../utils/imageProcessing.js";
 import { generateCADOutput } from "../utils/cadGeneration.js";
 import { useImageUpload } from "../hooks/useImageUpload.js";
