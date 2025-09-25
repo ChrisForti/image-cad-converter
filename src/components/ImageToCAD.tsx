@@ -738,13 +738,13 @@ export function ImageToCAD() {
       setIsProcessing(false);
     }
   }, [
-    image, 
-    settings, 
-    generateYachtFeatures, 
-    referencePoints, 
-    backgroundRemoval, 
-    categorizeDetectedFeatures, 
-    setCadOutput
+    image,
+    settings,
+    generateYachtFeatures,
+    referencePoints,
+    backgroundRemoval,
+    categorizeDetectedFeatures,
+    setCadOutput,
   ]);
 
   // Event handlers with proper typing
