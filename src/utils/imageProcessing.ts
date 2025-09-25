@@ -284,11 +284,7 @@ export function applyEdgeDetectionWithBackgroundRemoval(
   }
 
   // Apply existing edge detection
-  return applyEdgeDetection(
-    processedData,
-    settings.edgeMethod,
-    settings.threshold
-  );
+  return applyEdgeDetection(processedData, settings.edgeMethod, settings.threshold);
 }
 
 // Magic wand selection for manual background removal
