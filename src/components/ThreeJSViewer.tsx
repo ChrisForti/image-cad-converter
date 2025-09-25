@@ -100,7 +100,7 @@ export function ThreeJSViewer({
       scale: number,
       centerX: number,
       centerY: number,
-      feature: any,
+      feature: YachtFeature,
       index: number
     ) {
       const geometry = new THREE.BufferGeometry();
@@ -160,7 +160,7 @@ export function ThreeJSViewer({
       scale: number,
       centerX: number,
       centerY: number,
-      feature: any,
+      feature: YachtFeature,
       index: number
     ) {
       try {
@@ -242,9 +242,12 @@ export function ThreeJSViewer({
     }
     animate();
 
-    // Cleanup
+    // Cleanup - store ref in variable to avoid stale closure warning
+    const currentMount = mountRef.current;
     return () => {
-      mountRef.current?.removeChild(renderer.domElement);
+      if (currentMount && renderer.domElement) {
+        currentMount.removeChild(renderer.domElement);
+      }
       renderer.dispose();
       controls.dispose();
     };

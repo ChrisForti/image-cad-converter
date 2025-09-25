@@ -155,7 +155,7 @@ export function ImageToCAD() {
       }
     };
     setCadOutput(getInitialMessage());
-  }, [settings.conversionMode]);
+  }, [settings.conversionMode, setCadOutput]);
 
   // File upload handler with proper error handling
   // Canvas drawing with proper error handling
@@ -737,7 +737,15 @@ export function ImageToCAD() {
     } finally {
       setIsProcessing(false);
     }
-  }, [image, settings, generateYachtFeatures, referencePoints]);
+  }, [
+    image, 
+    settings, 
+    generateYachtFeatures, 
+    referencePoints, 
+    backgroundRemoval, 
+    categorizeDetectedFeatures, 
+    setCadOutput
+  ]);
 
   // Event handlers with proper typing
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {

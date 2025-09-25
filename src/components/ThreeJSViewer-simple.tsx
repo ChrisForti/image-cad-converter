@@ -127,9 +127,12 @@ export function ThreeJSViewer({
     }
     animate();
 
-    // Cleanup
+    // Cleanup - store ref in variable to avoid stale closure warning
+    const currentMount = mountRef.current;
     return () => {
-      mountRef.current?.removeChild(renderer.domElement);
+      if (currentMount && renderer.domElement) {
+        currentMount.removeChild(renderer.domElement);
+      }
       renderer.dispose();
       controls.dispose();
     };
