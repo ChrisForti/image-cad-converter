@@ -11,6 +11,8 @@ interface BackgroundRemovalState {
   maskData: ImageData | null;
   selectedAreas: Set<string>;
   previewMode: boolean;
+  selectionMode: "fine" | "medium" | "coarse";
+  isActive: boolean;
 }
 
 interface ImageToolsModalProps {
