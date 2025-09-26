@@ -11,6 +11,8 @@ interface BackgroundRemovalState {
   maskData: ImageData | null;
   selectedAreas: Set<string>;
   previewMode: boolean;
+  selectionMode: "fine" | "medium" | "coarse";
+  isActive: boolean;
 }
 
 interface ImageModificationPanelProps {
@@ -21,6 +23,10 @@ interface ImageModificationPanelProps {
   applySelection: () => void;
   clearSelection: () => void;
   resetBackgroundRemoval: () => void;
+  undoSelection?: () => void;
+  redoSelection?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   isVisible: boolean;
   onToggleVisibility: () => void;
 }
@@ -31,6 +37,10 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
   applySelection,
   clearSelection,
   resetBackgroundRemoval,
+  undoSelection,
+  redoSelection,
+  canUndo = false,
+  canRedo = false,
   isVisible,
   onToggleVisibility,
 }) => {
@@ -181,6 +191,72 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
                     </span>
                   )}
                 </div>
+
+                {/* Selection Mode & Keyboard Shortcuts */}
+                {backgroundRemoval.isSelecting && (
+                  <div className="bg-purple-500/20 p-3 rounded-lg border border-purple-300/30">
+                    {/* Selection Mode Toggle */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm text-purple-200">Mode:</span>
+                      <div className="flex gap-1">
+                        {(["fine", "medium", "coarse"] as const).map((mode) => (
+                          <button
+                            key={mode}
+                            onClick={() =>
+                              setBackgroundRemoval((prev) => ({
+                                ...prev,
+                                selectionMode: mode,
+                              }))
+                            }
+                            className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                              backgroundRemoval.selectionMode === mode
+                                ? "bg-purple-500 text-white"
+                                : "bg-white/10 text-purple-200 hover:bg-white/20"
+                            }`}
+                          >
+                            {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Undo/Redo Buttons */}
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm text-purple-200">History:</span>
+                      <button
+                        onClick={undoSelection}
+                        disabled={!canUndo}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                          canUndo
+                            ? "bg-blue-500 hover:bg-blue-600 text-white"
+                            : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                        }`}
+                      >
+                        ↶ Undo
+                      </button>
+                      <button
+                        onClick={redoSelection}
+                        disabled={!canRedo}
+                        className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                          canRedo
+                            ? "bg-blue-500 hover:bg-blue-600 text-white"
+                            : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                        }`}
+                      >
+                        ↷ Redo
+                      </button>
+                    </div>
+
+                    {/* Keyboard Shortcuts Help */}
+                    <div className="text-xs text-purple-300">
+                      <div>
+                        ⌨️ Shortcuts: <strong>Ctrl+Z</strong> undo,{" "}
+                        <strong>Ctrl+Y</strong> redo, <strong>Space</strong>{" "}
+                        toggle mode
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Apply/Clear Buttons */}
                 {backgroundRemoval.selectedAreas.size > 0 && (

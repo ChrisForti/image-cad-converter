@@ -80,7 +80,13 @@ export function ImageToCAD() {
     maskData: null as ImageData | null,
     selectedAreas: new Set<string>(), // Track selected pixels for preview
     previewMode: true, // Show selection before applying
+    selectionMode: "medium" as "fine" | "medium" | "coarse", // Multi-level selection
+    isActive: false, // Magic wand tool is active
   });
+
+  // Undo/Redo state for magic wand selections
+  const [selectionHistory, setSelectionHistory] = useState<Set<string>[]>([]);
+  const [historyIndex, setHistoryIndex] = useState(-1);
 
   // Image tools panel state
   const [isImageToolsPanelVisible, setIsImageToolsPanelVisible] =
@@ -208,9 +214,11 @@ export function ImageToCAD() {
         const ctx = canvas.getContext("2d");
         if (ctx && originalImageDataRef.current) {
           console.log(
-            "Magic wand clicked at:",
+            "Enhanced Magic wand clicked at:",
             x,
             y,
+            "mode:",
+            backgroundRemoval.selectionMode,
             "tolerance:",
             backgroundRemoval.tolerance
           );
@@ -218,15 +226,33 @@ export function ImageToCAD() {
           // Get current image data
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-          // Find selected pixels
+          // Map selection modes to tolerance levels
+          const toleranceMap = {
+            fine: backgroundRemoval.tolerance * 0.5,
+            medium: backgroundRemoval.tolerance,
+            coarse: backgroundRemoval.tolerance * 1.5,
+          };
+
+          const adjustedTolerance =
+            toleranceMap[backgroundRemoval.selectionMode];
+
+          // Find selected pixels using enhanced algorithm
           const selectedPixels = magicWandSelect(
             imageData,
             Math.floor(x),
             Math.floor(y),
-            backgroundRemoval.tolerance
+            adjustedTolerance
           );
 
-          console.log("Selected pixels:", selectedPixels.size);
+          console.log(
+            "Selected pixels:",
+            selectedPixels.size,
+            "mode:",
+            backgroundRemoval.selectionMode
+          );
+
+          // Save current selection to history for undo functionality
+          saveSelectionToHistory();
 
           // Add to existing selection
           const newSelectedAreas = new Set([
@@ -797,6 +823,44 @@ export function ImageToCAD() {
     }));
   };
 
+  // Undo/Redo functions for magic wand selections
+  const undoSelection = useCallback((): void => {
+    if (historyIndex > 0) {
+      const newIndex = historyIndex - 1;
+      setHistoryIndex(newIndex);
+      setBackgroundRemoval((prev) => ({
+        ...prev,
+        selectedAreas: new Set(selectionHistory[newIndex]),
+      }));
+    }
+  }, [historyIndex, selectionHistory]);
+
+  const redoSelection = useCallback((): void => {
+    if (historyIndex < selectionHistory.length - 1) {
+      const newIndex = historyIndex + 1;
+      setHistoryIndex(newIndex);
+      setBackgroundRemoval((prev) => ({
+        ...prev,
+        selectedAreas: new Set(selectionHistory[newIndex]),
+      }));
+    }
+  }, [historyIndex, selectionHistory]);
+
+  const saveSelectionToHistory = useCallback((): void => {
+    // Remove any history after current index
+    const newHistory = selectionHistory.slice(0, historyIndex + 1);
+    newHistory.push(new Set(backgroundRemoval.selectedAreas));
+
+    // Limit history to 20 steps to prevent memory issues
+    if (newHistory.length > 20) {
+      newHistory.shift();
+    } else {
+      setHistoryIndex(historyIndex + 1);
+    }
+
+    setSelectionHistory(newHistory);
+  }, [backgroundRemoval.selectedAreas, selectionHistory, historyIndex]);
+
   const applySelection = (): void => {
     const canvas = canvasRef.current;
     if (
@@ -853,6 +917,59 @@ export function ImageToCAD() {
       }
     }
   };
+
+  // Keyboard shortcuts for Magic Wand tool
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle shortcuts when in background removal mode
+      if (!backgroundRemoval.isActive) return;
+
+      // Ctrl+Z or Cmd+Z for undo (Mac/Windows compatible)
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undoSelection();
+      }
+
+      // Ctrl+Y or Cmd+Shift+Z for redo (Mac/Windows compatible)
+      if (
+        ((e.ctrlKey || e.metaKey) && e.key === "y") ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
+      ) {
+        e.preventDefault();
+        redoSelection();
+      }
+
+      // Space to toggle selection mode
+      if (
+        e.code === "Space" &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.shiftKey &&
+        !e.altKey
+      ) {
+        e.preventDefault();
+        const modes: Array<"fine" | "medium" | "coarse"> = [
+          "fine",
+          "medium",
+          "coarse",
+        ];
+        const currentIndex = modes.indexOf(backgroundRemoval.selectionMode);
+        const nextIndex = (currentIndex + 1) % modes.length;
+        setBackgroundRemoval((prev) => ({
+          ...prev,
+          selectionMode: modes[nextIndex],
+        }));
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [
+    backgroundRemoval.isActive,
+    backgroundRemoval.selectionMode,
+    undoSelection,
+    redoSelection,
+  ]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-blue-900 dark:from-gray-900 dark:via-gray-800 dark:to-black text-white transition-colors duration-300">
@@ -1308,6 +1425,10 @@ export function ImageToCAD() {
                   applySelection={applySelection}
                   clearSelection={clearSelection}
                   resetBackgroundRemoval={resetBackgroundRemoval}
+                  undoSelection={undoSelection}
+                  redoSelection={redoSelection}
+                  canUndo={historyIndex > 0}
+                  canRedo={historyIndex < selectionHistory.length - 1}
                   isVisible={isImageToolsPanelVisible}
                   onToggleVisibility={() =>
                     setIsImageToolsPanelVisible(!isImageToolsPanelVisible)

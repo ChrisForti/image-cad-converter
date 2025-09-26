@@ -284,15 +284,20 @@ export function applyEdgeDetectionWithBackgroundRemoval(
   }
 
   // Apply existing edge detection
-  return applyEdgeDetection(processedData, settings.edgeMethod, settings.threshold);
+  return applyEdgeDetection(
+    processedData,
+    settings.edgeMethod,
+    settings.threshold
+  );
 }
 
-// Magic wand selection for manual background removal
+// Enhanced magic wand selection with edge awareness and multi-level selection
 export function magicWandSelect(
   imageData: ImageData,
   x: number,
   y: number,
-  tolerance: number = 30
+  tolerance: number = 30,
+  mode: "fine" | "medium" | "coarse" = "medium"
 ): Set<string> {
   const { data, width, height } = imageData;
   const selected = new Set<string>();
@@ -304,8 +309,19 @@ export function magicWandSelect(
   const targetG = data[startIdx + 1];
   const targetB = data[startIdx + 2];
 
+  // Adjust tolerance based on mode
+  const adjustedTolerance =
+    mode === "fine"
+      ? tolerance * 0.5
+      : mode === "coarse"
+      ? tolerance * 1.5
+      : tolerance;
+
   const stack = [{ x, y }];
   const visited = new Set<string>();
+
+  // Pre-calculate edge map for better selection boundaries
+  const edgeMap = calculateEdgeMap(imageData);
 
   while (stack.length > 0) {
     const current = stack.pop()!;
@@ -319,16 +335,15 @@ export function magicWandSelect(
     const g = data[idx + 1];
     const b = data[idx + 2];
 
-    if (colorDistance(r, g, b, targetR, targetG, targetB) <= tolerance) {
+    const colorDiff = colorDistance(r, g, b, targetR, targetG, targetB);
+    const edgeStrength = edgeMap[current.y * width + current.x];
+
+    // Stop at strong edges (edge-aware selection)
+    if (colorDiff <= adjustedTolerance && edgeStrength < 0.3) {
       selected.add(key);
 
-      // Add neighbors to stack
-      const neighbors = [
-        { x: current.x - 1, y: current.y },
-        { x: current.x + 1, y: current.y },
-        { x: current.x, y: current.y - 1 },
-        { x: current.x, y: current.y + 1 },
-      ];
+      // Add neighbors to stack with improved connectivity
+      const neighbors = getNeighbors(current.x, current.y, mode);
 
       for (const neighbor of neighbors) {
         if (
@@ -345,4 +360,61 @@ export function magicWandSelect(
   }
 
   return selected;
+}
+
+// Helper function to calculate edge map for edge-aware selection
+function calculateEdgeMap(imageData: ImageData): Float32Array {
+  const { data, width, height } = imageData;
+  const edges = new Float32Array(width * height);
+
+  for (let y = 1; y < height - 1; y++) {
+    for (let x = 1; x < width - 1; x++) {
+      // Simple Sobel edge detection
+      const gx =
+        -data[((y - 1) * width + (x - 1)) * 4] +
+        data[((y - 1) * width + (x + 1)) * 4] +
+        -2 * data[(y * width + (x - 1)) * 4] +
+        2 * data[(y * width + (x + 1)) * 4] +
+        -data[((y + 1) * width + (x - 1)) * 4] +
+        data[((y + 1) * width + (x + 1)) * 4];
+
+      const gy =
+        -data[((y - 1) * width + (x - 1)) * 4] -
+        2 * data[((y - 1) * width + x) * 4] -
+        data[((y - 1) * width + (x + 1)) * 4] +
+        data[((y + 1) * width + (x - 1)) * 4] +
+        2 * data[((y + 1) * width + x) * 4] +
+        data[((y + 1) * width + (x + 1)) * 4];
+
+      edges[y * width + x] = Math.sqrt(gx * gx + gy * gy) / 255;
+    }
+  }
+
+  return edges;
+}
+
+// Get neighbors based on selection mode
+function getNeighbors(
+  x: number,
+  y: number,
+  mode: "fine" | "medium" | "coarse"
+) {
+  const neighbors = [
+    { x: x - 1, y: y },
+    { x: x + 1, y: y },
+    { x: x, y: y - 1 },
+    { x: x, y: y + 1 },
+  ];
+
+  // Add diagonal neighbors for medium/coarse modes
+  if (mode !== "fine") {
+    neighbors.push(
+      { x: x - 1, y: y - 1 },
+      { x: x + 1, y: y - 1 },
+      { x: x - 1, y: y + 1 },
+      { x: x + 1, y: y + 1 }
+    );
+  }
+
+  return neighbors;
 }
