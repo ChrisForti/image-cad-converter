@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState } from "react";
 import * as THREE from "three";
-import { OrbitControls } from "three-stdlib";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { YachtFeature } from "../types/index.js";
 
 interface ThreeJSViewerProps {
