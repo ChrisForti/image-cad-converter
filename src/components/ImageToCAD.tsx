@@ -72,7 +72,7 @@ export function ImageToCAD() {
   // Background removal state
   const [backgroundRemoval, setBackgroundRemoval] = useState({
     enabled: false,
-    method: "auto" as "auto" | "manual" | "color",
+    method: "manual" as "auto" | "manual" | "ai",
     threshold: 50,
     excludeColors: ["#87CEEB", "#FFFFFF", "#000080", "#006994"], // sky, white, navy, water
     tolerance: 30,
@@ -823,6 +823,62 @@ export function ImageToCAD() {
     }));
   };
 
+  // AI Background Removal using @imgly/background-removal
+  const handleAIBackgroundRemoval = useCallback(
+    async (canvas: HTMLCanvasElement): Promise<void> => {
+      try {
+        console.log("Starting AI background removal...");
+
+        // Dynamic import to keep bundle size optimized
+        const { removeBackground } = await import("@imgly/background-removal");
+
+        // Store original image data if not already stored
+        if (!originalImageDataRef.current) {
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            originalImageDataRef.current = ctx.getImageData(
+              0,
+              0,
+              canvas.width,
+              canvas.height
+            );
+          }
+        }
+
+        // Create a blob from the canvas
+        const blob = await new Promise<Blob>((resolve) => {
+          canvas.toBlob((blob) => resolve(blob!), "image/png");
+        });
+
+        // Process with AI
+        const result = await removeBackground(blob);
+
+        // Create image from result
+        const img = new Image();
+        const url = URL.createObjectURL(result);
+
+        img.onload = () => {
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            // Clear canvas and draw AI-processed image
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          }
+          URL.revokeObjectURL(url);
+          console.log("AI background removal completed successfully");
+        };
+
+        img.src = url;
+      } catch (error) {
+        console.error("AI background removal failed:", error);
+        // Reset to original image on error
+        resetBackgroundRemoval();
+        throw error;
+      }
+    },
+    [resetBackgroundRemoval]
+  );
+
   // Undo/Redo functions for magic wand selections
   const undoSelection = useCallback((): void => {
     if (historyIndex > 0) {
@@ -1429,6 +1485,7 @@ export function ImageToCAD() {
                   redoSelection={redoSelection}
                   canUndo={historyIndex > 0}
                   canRedo={historyIndex < selectionHistory.length - 1}
+                  onAIBackgroundRemoval={handleAIBackgroundRemoval}
                   isVisible={isImageToolsPanelVisible}
                   onToggleVisibility={() =>
                     setIsImageToolsPanelVisible(!isImageToolsPanelVisible)
@@ -1505,8 +1562,26 @@ export function ImageToCAD() {
           </button>
 
           {isCADOutputOpen && (
-            <div className="bg-black rounded-lg p-4 font-mono text-sm overflow-x-auto min-h-[300px]">
-              <pre className="whitespace-pre-wrap">{cadOutput}</pre>
+            <div
+              className="bg-black rounded-lg p-4 font-mono text-sm overflow-auto min-h-[300px] md:overflow-x-auto"
+              style={{
+                WebkitOverflowScrolling: "touch", // Enable momentum scrolling on iOS
+                overscrollBehavior: "contain", // Prevent parent scroll when reaching bounds
+              }}
+              onTouchStart={(e) => {
+                // Prevent parent scroll interference on mobile
+                if (window.innerWidth <= 768) {
+                  e.stopPropagation();
+                }
+              }}
+              onTouchMove={(e) => {
+                // Allow native touch scrolling on mobile
+                if (window.innerWidth <= 768) {
+                  e.stopPropagation();
+                }
+              }}
+            >
+              <pre className="whitespace-pre-wrap select-text">{cadOutput}</pre>
             </div>
           )}
         </div>

@@ -202,7 +202,7 @@ SCALE CALIBRATION`;
 
 // Background removal utilities for marine environments
 export interface BackgroundRemovalOptions {
-  method: "auto" | "manual" | "color";
+  method: "auto" | "manual" | "color" | "ai";
   threshold: number;
   excludeColors: string[];
   tolerance: number;
