@@ -1,9 +1,9 @@
-import React from "react";
-import { Target } from "lucide-react";
+import React, { useState } from "react";
+import { Target, Sparkles, Loader2 } from "lucide-react";
 
 interface BackgroundRemovalState {
   enabled: boolean;
-  method: "auto" | "manual" | "color";
+  method: "auto" | "manual" | "ai";
   threshold: number;
   excludeColors: string[];
   tolerance: number;
@@ -27,6 +27,7 @@ interface ImageModificationPanelProps {
   redoSelection?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onAIBackgroundRemoval?: (canvas: HTMLCanvasElement) => Promise<void>;
   isVisible: boolean;
   onToggleVisibility: () => void;
 }
@@ -41,9 +42,11 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
   redoSelection,
   canUndo = false,
   canRedo = false,
+  onAIBackgroundRemoval,
   isVisible,
   onToggleVisibility,
 }) => {
+  const [isAIProcessing, setIsAIProcessing] = useState(false);
   if (!isVisible) {
     return (
       <button
@@ -108,28 +111,28 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
                 onChange={(e) =>
                   setBackgroundRemoval((prev) => ({
                     ...prev,
-                    method: e.target.value as "auto" | "manual" | "color",
+                    method: e.target.value as "auto" | "manual" | "ai",
                   }))
                 }
                 className="w-full p-2 bg-white/90 text-gray-800 rounded-lg text-sm"
               >
-                <option value="color">Color Filtering</option>
                 <option value="manual">Magic Wand</option>
+                <option value="ai">AI Assistant</option>
                 <option value="auto">Auto Detect</option>
               </select>
 
               {/* Method Instructions */}
               <div className="mt-2 text-xs text-blue-300">
-                {backgroundRemoval.method === "color" && (
-                  <p>
-                    💡 Automatically removes common marine backgrounds (sky,
-                    water, gel coat)
-                  </p>
-                )}
                 {backgroundRemoval.method === "manual" && (
                   <p>
                     💡 Click Magic Wand, then click areas to remove. Works great
                     for complex backgrounds.
+                  </p>
+                )}
+                {backgroundRemoval.method === "ai" && (
+                  <p>
+                    AI-powered background removal. One-click solution using
+                    advanced machine learning. Perfect for complex yacht shapes.
                   </p>
                 )}
                 {backgroundRemoval.method === "auto" && (
@@ -278,40 +281,58 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
               </>
             )}
 
-            {/* Color Filter Controls */}
-            {backgroundRemoval.method === "color" && (
-              <div>
-                <label className="block text-sm font-medium text-blue-200 mb-2">
-                  Color Tolerance: {backgroundRemoval.tolerance}
-                </label>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  value={backgroundRemoval.tolerance}
-                  onChange={(e) =>
-                    setBackgroundRemoval((prev) => ({
-                      ...prev,
-                      tolerance: parseInt(e.target.value),
-                    }))
-                  }
-                  className="w-full"
-                />
-                <div className="flex gap-1 mt-2 text-xs">
-                  <span className="px-2 py-1 bg-blue-500 text-white rounded">
-                    Sky
-                  </span>
-                  <span className="px-2 py-1 bg-white text-black rounded">
-                    Gel Coat
-                  </span>
-                  <span className="px-2 py-1 bg-blue-800 text-white rounded">
-                    Water
-                  </span>
-                  <span className="px-2 py-1 bg-gray-600 text-white rounded">
-                    Metal
-                  </span>
+            {/* AI Assistant Tools */}
+            {backgroundRemoval.method === "ai" && (
+              <>
+                {/* AI Processing Button */}
+                <div>
+                  <button
+                    onClick={async () => {
+                      if (!onAIBackgroundRemoval) return;
+                      setIsAIProcessing(true);
+                      try {
+                        // We'll need to get the canvas from parent component
+                        const canvas = document.querySelector(
+                          "canvas"
+                        ) as HTMLCanvasElement;
+                        if (canvas) {
+                          await onAIBackgroundRemoval(canvas);
+                        }
+                      } catch (error) {
+                        console.error("AI background removal failed:", error);
+                        // TODO: Add user-friendly error handling
+                      } finally {
+                        setIsAIProcessing(false);
+                      }
+                    }}
+                    disabled={isAIProcessing}
+                    className={`w-full px-4 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 ${
+                      isAIProcessing
+                        ? "bg-purple-600 cursor-not-allowed"
+                        : "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    } text-white shadow-lg`}
+                  >
+                    {isAIProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        Remove Background with AI
+                      </>
+                    )}
+                  </button>
+
+                  {/* AI Processing Info */}
+                  <div className="mt-2 text-xs text-purple-300">
+                    <div>⚡ One-click AI removal (~2-3 seconds)</div>
+                    <div>🎯 Optimized for complex yacht shapes</div>
+                    <div>💡 Use Magic Wand for fine-tuning after AI</div>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Reset Button */}

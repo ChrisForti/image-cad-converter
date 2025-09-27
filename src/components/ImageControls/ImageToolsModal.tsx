@@ -3,7 +3,7 @@ import { Target, X } from "lucide-react";
 
 interface BackgroundRemovalState {
   enabled: boolean;
-  method: "auto" | "manual" | "color";
+  method: "auto" | "manual" | "ai";
   threshold: number;
   excludeColors: string[];
   tolerance: number;
@@ -95,28 +95,29 @@ export const ImageToolsModal: React.FC<ImageToolsModalProps> = ({
                   onChange={(e) =>
                     setBackgroundRemoval((prev) => ({
                       ...prev,
-                      method: e.target.value as "auto" | "manual" | "color",
+                      method: e.target.value as "auto" | "manual" | "ai",
                     }))
                   }
                   className="w-full p-3 bg-white/90 text-gray-800 rounded-lg"
                 >
-                  <option value="color">Color Filtering</option>
                   <option value="manual">Magic Wand</option>
+                  <option value="ai">AI Assistant</option>
                   <option value="auto">Auto Detect</option>
                 </select>
 
                 {/* Method Instructions */}
                 <div className="mt-2 text-sm text-gray-400">
-                  {backgroundRemoval.method === "color" && (
-                    <p>
-                      💡 Automatically removes common marine backgrounds (sky,
-                      water, gel coat)
-                    </p>
-                  )}
                   {backgroundRemoval.method === "manual" && (
                     <p>
                       💡 Click Magic Wand, then click areas to remove. Works
                       great for complex backgrounds.
+                    </p>
+                  )}
+                  {backgroundRemoval.method === "ai" && (
+                    <p>
+                      AI-powered background removal. One-click solution using
+                      advanced machine learning. Perfect for complex yacht
+                      shapes.
                     </p>
                   )}
                   {backgroundRemoval.method === "auto" && (
@@ -196,42 +197,6 @@ export const ImageToolsModal: React.FC<ImageToolsModalProps> = ({
                     </div>
                   )}
                 </>
-              )}
-
-              {/* Color Filter Controls */}
-              {backgroundRemoval.method === "color" && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    Color Tolerance: {backgroundRemoval.tolerance}
-                  </label>
-                  <input
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={backgroundRemoval.tolerance}
-                    onChange={(e) =>
-                      setBackgroundRemoval((prev) => ({
-                        ...prev,
-                        tolerance: parseInt(e.target.value),
-                      }))
-                    }
-                    className="w-full h-2"
-                  />
-                  <div className="flex gap-2 mt-3">
-                    <span className="px-3 py-1 bg-blue-500 text-white rounded">
-                      Sky
-                    </span>
-                    <span className="px-3 py-1 bg-white text-black rounded">
-                      Gel Coat
-                    </span>
-                    <span className="px-3 py-1 bg-blue-800 text-white rounded">
-                      Water
-                    </span>
-                    <span className="px-3 py-1 bg-gray-600 text-white rounded">
-                      Metal
-                    </span>
-                  </div>
-                </div>
               )}
 
               {/* Reset Button */}

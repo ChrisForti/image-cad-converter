@@ -16,6 +16,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
     "@types/three": "^0.180.0",
     "dxf-writer": "^1.18.4",
     "heic2any": "^0.0.4",
