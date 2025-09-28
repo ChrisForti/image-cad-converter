@@ -327,8 +327,18 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
 
                   {/* AI Processing Info */}
                   <div className="mt-2 text-xs text-purple-300">
-                    <div>⚡ One-click AI removal (~2-3 seconds)</div>
+                    <div>⚡ One-click AI removal</div>
                     <div>🎯 Optimized for complex yacht shapes</div>
+                    <div className="md:hidden text-yellow-300">
+                      📱 May take 10-30s on mobile devices
+                    </div>
+                    <div className="md:hidden text-orange-300">
+                      ⚠️ Large images may timeout - try Manual method for better
+                      mobile experience
+                    </div>
+                    <div className="hidden md:block">
+                      🚀 Fast processing (~2-3 seconds)
+                    </div>
                     <div>💡 Use Magic Wand for fine-tuning after AI</div>
                   </div>
                 </div>

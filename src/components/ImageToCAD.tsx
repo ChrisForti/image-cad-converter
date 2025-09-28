@@ -829,6 +829,12 @@ export function ImageToCAD() {
       try {
         console.log("Starting AI background removal...");
 
+        // Check if we're on a mobile device
+        const isMobile =
+          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+            navigator.userAgent
+          ) || window.innerWidth <= 768;
+
         // Dynamic import to keep bundle size optimized
         const { removeBackground } = await import("@imgly/background-removal");
 
@@ -845,13 +851,53 @@ export function ImageToCAD() {
           }
         }
 
-        // Create a blob from the canvas
+        // For mobile devices, resize large images to prevent memory issues
+        let processCanvas = canvas;
+        if (isMobile && (canvas.width > 1200 || canvas.height > 1200)) {
+          console.log("Mobile device detected - resizing for processing...");
+
+          const maxDimension = 1200;
+          const scale = Math.min(
+            maxDimension / canvas.width,
+            maxDimension / canvas.height
+          );
+
+          processCanvas = document.createElement("canvas");
+          processCanvas.width = canvas.width * scale;
+          processCanvas.height = canvas.height * scale;
+
+          const ctx = processCanvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(
+              canvas,
+              0,
+              0,
+              processCanvas.width,
+              processCanvas.height
+            );
+          }
+        }
+
+        // Create a blob from the canvas with mobile-optimized quality
         const blob = await new Promise<Blob>((resolve) => {
-          canvas.toBlob((blob) => resolve(blob!), "image/png");
+          const quality = isMobile ? 0.8 : 0.95; // Lower quality on mobile to reduce memory usage
+          processCanvas.toBlob((blob) => resolve(blob!), "image/jpeg", quality);
         });
 
+        // Add timeout for mobile devices
+        const timeout = isMobile ? 30000 : 60000; // 30s mobile, 60s desktop
+        const processWithTimeout = Promise.race([
+          removeBackground(blob),
+          new Promise<never>((_, reject) =>
+            setTimeout(
+              () => reject(new Error("AI processing timeout")),
+              timeout
+            )
+          ),
+        ]);
+
         // Process with AI
-        const result = await removeBackground(blob);
+        const result = await processWithTimeout;
 
         // Create image from result
         const img = new Image();
@@ -865,12 +911,35 @@ export function ImageToCAD() {
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           }
           URL.revokeObjectURL(url);
+
+          // Clean up the temporary canvas if we created one
+          if (processCanvas !== canvas) {
+            processCanvas.remove();
+          }
+
           console.log("AI background removal completed successfully");
         };
 
         img.src = url;
       } catch (error) {
         console.error("AI background removal failed:", error);
+
+        // Provide helpful error messages for mobile users
+        if (error instanceof Error) {
+          if (error.message.includes("timeout")) {
+            alert(
+              "AI processing is taking too long on this device. Try using a smaller image or the manual removal tools instead."
+            );
+          } else if (
+            error.message.includes("memory") ||
+            error.message.includes("allocation")
+          ) {
+            alert(
+              "Not enough memory to process this image. Try using a smaller image or the manual removal tools."
+            );
+          }
+        }
+
         // Reset to original image on error
         resetBackgroundRemoval();
         throw error;
