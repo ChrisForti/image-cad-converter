@@ -1352,18 +1352,6 @@ export function ImageToCAD() {
                 </button>
 
                 <button
-                  onClick={() => {
-                    const demoFeatures = generateYachtFeatures();
-                    setDetectedFeatures(demoFeatures);
-                    console.log("Demo features loaded:", demoFeatures.length);
-                  }}
-                  className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all"
-                >
-                  <Box className="w-4 h-4" />
-                  Load Demo 3D
-                </button>
-
-                <button
                   onClick={() => setIsScaleMode(!isScaleMode)}
                   className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all ${
                     isScaleMode

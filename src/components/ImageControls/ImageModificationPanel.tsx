@@ -93,7 +93,7 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
               className="w-4 h-4 text-purple-500 rounded focus:ring-purple-400"
             />
             <span className="text-sm text-blue-200">
-              Remove marine backgrounds
+              Remove background
             </span>
           </label>
         </div>
@@ -103,26 +103,73 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
           <>
             {/* Method Selection */}
             <div>
-              <label className="block text-sm font-medium text-blue-200 mb-2">
+              <label className="block text-sm font-medium text-blue-200 mb-3">
                 Removal Method
               </label>
-              <select
-                value={backgroundRemoval.method}
-                onChange={(e) =>
-                  setBackgroundRemoval((prev) => ({
-                    ...prev,
-                    method: e.target.value as "auto" | "manual" | "ai",
-                  }))
-                }
-                className="w-full p-2 bg-white/90 text-gray-800 rounded-lg text-sm"
-              >
-                <option value="manual">Magic Wand</option>
-                <option value="ai">AI Assistant</option>
-                <option value="auto">Auto Detect</option>
-              </select>
+              
+              {/* Method Cards */}
+              <div className="grid grid-cols-3 gap-2 mb-3">
+                {/* Magic Wand Card */}
+                <button
+                  onClick={() =>
+                    setBackgroundRemoval((prev) => ({
+                      ...prev,
+                      method: "manual",
+                      isSelecting: true, // Automatically enable selection mode
+                    }))
+                  }
+                  className={`p-3 rounded-lg border-2 transition-all text-left ${
+                    backgroundRemoval.method === "manual"
+                      ? "border-purple-500 bg-purple-500/20"
+                      : "border-white/20 bg-white/5 hover:border-white/40"
+                  }`}
+                >
+                  <div className="text-2xl mb-1">🎯</div>
+                  <div className="text-sm font-medium text-white">Magic Wand</div>
+                  <div className="text-xs text-blue-200 mt-1">Click to select</div>
+                </button>
+
+                {/* AI Assistant Card */}
+                <button
+                  onClick={() =>
+                    setBackgroundRemoval((prev) => ({
+                      ...prev,
+                      method: "ai",
+                    }))
+                  }
+                  className={`p-3 rounded-lg border-2 transition-all text-left ${
+                    backgroundRemoval.method === "ai"
+                      ? "border-purple-500 bg-purple-500/20"
+                      : "border-white/20 bg-white/5 hover:border-white/40"
+                  }`}
+                >
+                  <div className="text-2xl mb-1">✨</div>
+                  <div className="text-sm font-medium text-white">AI Assistant</div>
+                  <div className="text-xs text-blue-200 mt-1">One-click AI</div>
+                </button>
+
+                {/* Auto Detect Card */}
+                <button
+                  onClick={() =>
+                    setBackgroundRemoval((prev) => ({
+                      ...prev,
+                      method: "auto",
+                    }))
+                  }
+                  className={`p-3 rounded-lg border-2 transition-all text-left ${
+                    backgroundRemoval.method === "auto"
+                      ? "border-purple-500 bg-purple-500/20"
+                      : "border-white/20 bg-white/5 hover:border-white/40"
+                  }`}
+                >
+                  <div className="text-2xl mb-1">🤖</div>
+                  <div className="text-sm font-medium text-white">Auto Detect</div>
+                  <div className="text-xs text-blue-200 mt-1">AI detection</div>
+                </button>
+              </div>
 
               {/* Method Instructions */}
-              <div className="mt-2 text-xs text-blue-300">
+              <div className="text-xs text-blue-300 bg-blue-500/10 p-2 rounded-lg">
                 {backgroundRemoval.method === "manual" && (
                   <p>
                     💡 Click Magic Wand, then click areas to remove. Works great

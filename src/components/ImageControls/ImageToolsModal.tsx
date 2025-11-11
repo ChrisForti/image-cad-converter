@@ -78,7 +78,7 @@ export const ImageToolsModal: React.FC<ImageToolsModalProps> = ({
                 }
                 className="w-5 h-5 text-purple-500 rounded focus:ring-purple-400"
               />
-              <span className="text-white">Remove marine backgrounds</span>
+              <span className="text-white">Remove background</span>
             </label>
           </div>
 
