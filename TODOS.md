@@ -93,18 +93,21 @@ Click-to-Select Areas:
 ### Simple Success Criteria
 
 **For Mobile:**
+
 - ✅ Complete workflow possible on phone
 - ✅ No major UI breaking or hanging
 - ✅ Text readable and scrollable
 - ✅ Touch controls work intuitively
 
 **For Desktop:**
+
 - ✅ Efficient use of screen space
 - ✅ Fast workflow for your actual work needs
 - ✅ Exports work with your existing tools
 - ✅ Reliable processing of your typical yacht images
 
 **For Team Adoption:**
+
 - ✅ Everyone can use it without training
 - ✅ Saves time vs current process
 - ✅ Handles your typical yacht photo types
@@ -113,12 +116,14 @@ Click-to-Select Areas:
 ### 📝 Super Simple Feedback Process
 
 Just keep a shared note with:
+
 - Device used
 - What worked well
 - What was annoying
 - Any bugs or weird behavior
 
 **Example entries:**
+
 - "iPhone 14 - AI removal took 45 seconds but worked great"
 - "MacBook Pro - wish I could see image and CAD text side by side"
 - "Samsung tablet - 3D viewer is choppy when rotating"
@@ -126,6 +131,7 @@ Just keep a shared note with:
 ### 🚀 Quick Wins to Test
 
 Since this is for internal use, focus on:
+
 1. Does it solve your actual problem?
 2. Is it faster than your current workflow?
 3. Does everyone on the team find it usable?
@@ -135,3 +141,4 @@ Since this is for internal use, focus on:
 
 ```
     ``
+```
