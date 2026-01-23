@@ -92,9 +92,7 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
               }
               className="w-4 h-4 text-purple-500 rounded focus:ring-purple-400"
             />
-            <span className="text-sm text-blue-200">
-              Remove background
-            </span>
+            <span className="text-sm text-blue-200">Remove background</span>
           </label>
         </div>
 
@@ -106,7 +104,7 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
               <label className="block text-sm font-medium text-blue-200 mb-3">
                 Removal Method
               </label>
-              
+
               {/* Method Cards */}
               <div className="grid grid-cols-3 gap-2 mb-3">
                 {/* Magic Wand Card */}
@@ -125,8 +123,12 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
                   }`}
                 >
                   <div className="text-2xl mb-1">🎯</div>
-                  <div className="text-sm font-medium text-white">Magic Wand</div>
-                  <div className="text-xs text-blue-200 mt-1">Click to select</div>
+                  <div className="text-sm font-medium text-white">
+                    Magic Wand
+                  </div>
+                  <div className="text-xs text-blue-200 mt-1">
+                    Click to select
+                  </div>
                 </button>
 
                 {/* AI Assistant Card */}
@@ -144,7 +146,9 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
                   }`}
                 >
                   <div className="text-2xl mb-1">✨</div>
-                  <div className="text-sm font-medium text-white">AI Assistant</div>
+                  <div className="text-sm font-medium text-white">
+                    AI Assistant
+                  </div>
                   <div className="text-xs text-blue-200 mt-1">One-click AI</div>
                 </button>
 
@@ -163,7 +167,9 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
                   }`}
                 >
                   <div className="text-2xl mb-1">🤖</div>
-                  <div className="text-sm font-medium text-white">Auto Detect</div>
+                  <div className="text-sm font-medium text-white">
+                    Auto Detect
+                  </div>
                   <div className="text-xs text-blue-200 mt-1">AI detection</div>
                 </button>
               </div>
@@ -375,7 +381,7 @@ export const ImageModificationPanel: React.FC<ImageModificationPanelProps> = ({
                   {/* AI Processing Info */}
                   <div className="mt-2 text-xs text-purple-300">
                     <div>⚡ One-click AI removal</div>
-                    <div>🎯 Optimized for complex yacht shapes</div>
+                    <div>Optimized for complex yacht shapes</div>
                     <div className="md:hidden text-yellow-300">
                       📱 May take 10-30s on mobile devices
                     </div>

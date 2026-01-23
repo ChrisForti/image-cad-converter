@@ -1646,7 +1646,7 @@ export function ImageToCAD() {
         {/* Features Panel */}
         <div className="bg-white/10 dark:bg-white/5 backdrop-blur-lg rounded-2xl p-6 border border-white/20 dark:border-gray-700 transition-colors duration-300">
           <h2 className="text-2xl font-semibold mb-6 text-blue-200">
-            🛠️ Yacht-Specific Features
+            Yacht-Specific Features
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
